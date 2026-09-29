@@ -3,6 +3,19 @@ import * as dm from '@marshallasch/dive-math'
 
 const AIR = dm.AIR
 const bad = [NaN, Infinity, -Infinity]
+const timingOk: dm.TimingArgs = {
+	driveAirL: 500,
+	riseBar: 100,
+	receiverVolL: 11.1,
+	maxFillRateBarPerMin: 10,
+	driveSweptL: 1,
+	maxCpm: 60,
+	ratio: 40,
+	supplyAbsBar: 100,
+	driveStartBar: 1,
+	driveEndBar: 5,
+	compressorRateLpm: 100,
+}
 
 // Each case builds a call with one numeric argument replaced by `v`.
 const cases: [string, (v: number) => unknown][] = [
@@ -57,6 +70,30 @@ const cases: [string, (v: number) => unknown][] = [
 				receiverStart: 0,
 				target: 200,
 			}),
+	],
+	[
+		'boosterTiming (driveSweptL)',
+		(v) => dm.boosterTiming({ ...timingOk, driveSweptL: v }),
+	],
+	[
+		'boosterTiming (supplyAbsBar)',
+		(v) => dm.boosterTiming({ ...timingOk, supplyAbsBar: v }),
+	],
+	[
+		'boosterFillProfile (steps)',
+		(v) =>
+			dm.boosterFillProfile(
+				{
+					ratio: 40,
+					driveP: 8,
+					supplyVol: 50,
+					supplyStart: 150,
+					receiverVol: 11.1,
+					receiverStart: 0,
+					target: 200,
+				},
+				v,
+			),
 	],
 	['settledPressure', (v) => dm.settledPressure(230, v, 20)],
 	['cnsLimitMinutes', (v) => dm.cnsLimitMinutes(v)],

@@ -265,7 +265,9 @@ export function booster(input: BoosterInput): BoosterResult {
 
 /**
  * Place a booster fill on the clock: equalisation plus boost time, cycle rate and compressor duty.
- * Returns null when the booster geometry or fill-rate limit is missing.
+ * Returns null when the booster geometry or fill-rate limit is not configured
+ * (`driveSweptL`, `maxCpm`, `maxFillRateBarPerMin` or `ratio` is 0). Throws
+ * RangeError for any non-finite or negative numeric field.
  * @example boosterTiming({ driveAirL: 500, riseBar: 100, receiverVolL: 11.1, maxFillRateBarPerMin: 10, driveSweptL: 1, maxCpm: 60, ratio: 40, supplyAbsBar: 100, driveStartBar: 1, driveEndBar: 5, compressorRateLpm: 100 })?.fillSeconds
  */
 export function boosterTiming(args: TimingArgs): BoosterTiming | null {
@@ -282,8 +284,27 @@ export function boosterTiming(args: TimingArgs): BoosterTiming | null {
 		driveEndBar,
 		compressorRateLpm: C,
 	} = args
-	// Need the booster's geometry + a fill-rate limit to place the fill on time.
-	if (!(driveSweptL > 0) || !(maxCpm > 0) || !(maxRate > 0) || !(ratio > 0)) {
+	assertNonNegative('driveAirL', driveAirL)
+	assertNonNegative('riseBar', riseBar)
+	if (args.eqRiseBar !== undefined)
+		assertNonNegative('eqRiseBar', args.eqRiseBar)
+	assertPositive('receiverVolL', vr)
+	assertNonNegative('maxFillRateBarPerMin', maxRate)
+	assertNonNegative('driveSweptL', driveSweptL)
+	assertNonNegative('maxCpm', maxCpm)
+	assertNonNegative('ratio', ratio)
+	assertPositive('supplyAbsBar', supplyAbsBar)
+	assertNonNegative('driveStartBar', driveStartBar)
+	assertNonNegative('driveEndBar', driveEndBar)
+	assertNonNegative('compressorRateLpm', C)
+	for (const key of ['storageL', 'storageMaxBar', 'storageMinBar'] as const) {
+		const v = args[key]
+		if (v !== undefined) assertNonNegative(key, v)
+	}
+	if (args.gas) assertGas(args.gas)
+	// Need the booster's geometry + a fill-rate limit to place the fill on time
+	// (any of these being 0 means "not configured").
+	if (driveSweptL === 0 || maxCpm === 0 || maxRate === 0 || ratio === 0) {
 		return null
 	}
 
@@ -294,8 +315,8 @@ export function boosterTiming(args: TimingArgs): BoosterTiming | null {
 		dutyContinuous: false,
 		stallSeconds: null as number | null,
 	}
-	const eqRiseBar = Math.max(0, args.eqRiseBar ?? 0)
-	if (driveAirL <= 0 || riseBar <= 0) {
+	const eqRiseBar = args.eqRiseBar ?? 0
+	if (driveAirL === 0 || riseBar === 0) {
 		// No boost, but a free-equalization transfer may still take time.
 		const eqSeconds = (eqRiseBar / maxRate) * 60
 		return {
@@ -370,6 +391,7 @@ export function boosterTiming(args: TimingArgs): BoosterTiming | null {
 
 /**
  * Sample receiver pressure, cumulative drive air and supply pressure across a booster fill.
+ * `steps` (intervals, default 40) must be an integer ≥ 1.
  * @example boosterFillProfile({ ratio: 40, driveP: 8, supplyVol: 50, supplyStart: 150, receiverVol: 11.1, receiverStart: 0, target: 200 }, 10).length // 11
  */
 export function boosterFillProfile(
@@ -377,6 +399,9 @@ export function boosterFillProfile(
 	steps = 40,
 	timing?: TimingArgs,
 ): ProfilePoint[] {
+	if (!Number.isInteger(steps) || steps < 1) {
+		throw new RangeError(`steps must be an integer >= 1 (got ${steps})`)
+	}
 	const { ratio, supplyVol: vs, receiverVol: vr, receiverStart, target } = input
 	const { boostStartReceiver, inletStartAbs } = boostSetup(input)
 	const boostStartAbs = boostStartReceiver + ATM

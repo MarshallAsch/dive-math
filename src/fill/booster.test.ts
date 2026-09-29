@@ -57,6 +57,7 @@ describe('booster', () => {
 			target: 280,
 		})
 		expect(r.feasible).toBe(false)
+		expect(r.reason).toBe('supply-insufficient')
 		expect(r.supplyLimitedMax).toBeGreaterThan(0)
 		expect(r.supplyLimitedMax).toBeLessThan(280)
 	})
@@ -367,4 +368,47 @@ describe('booster branch coverage', () => {
 			RangeError,
 		)
 	})
+})
+
+describe('booster input guards', () => {
+	const numericFields = [
+		'driveAirL',
+		'riseBar',
+		'eqRiseBar',
+		'receiverVolL',
+		'maxFillRateBarPerMin',
+		'driveSweptL',
+		'maxCpm',
+		'ratio',
+		'supplyAbsBar',
+		'driveStartBar',
+		'driveEndBar',
+		'compressorRateLpm',
+		'storageL',
+		'storageMaxBar',
+		'storageMinBar',
+	] as const
+	for (const field of numericFields) {
+		it.each([NaN, Infinity, -1])(`boosterTiming rejects ${field} = %s`, (v) =>
+			expect(() => boosterTiming({ ...timing, [field]: v })).toThrow(
+				new RegExp(field),
+			),
+		)
+	}
+	it.each(['receiverVolL', 'supplyAbsBar'] as const)(
+		'boosterTiming rejects %s = 0',
+		(field) =>
+			expect(() => boosterTiming({ ...timing, [field]: 0 })).toThrow(
+				RangeError,
+			),
+	)
+	it('boosterTiming rejects a bad gas', () =>
+		expect(() => boosterTiming({ ...timing, gas: { fo2: 2, fhe: 0 } })).toThrow(
+			RangeError,
+		))
+	it('boosterTiming still returns null for zero ratio', () =>
+		expect(boosterTiming({ ...timing, ratio: 0 })).toBeNull())
+	it.each([0, 1.5, -1, NaN])('boosterFillProfile rejects steps = %s', (v) =>
+		expect(() => boosterFillProfile(base, v)).toThrow(/steps/),
+	)
 })
