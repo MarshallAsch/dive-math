@@ -24,6 +24,8 @@ export default defineConfig({
 	description: 'Scuba diving math for TypeScript',
 	base: '/dive-math/',
 	cleanUrls: true,
+	// Internal plan/spec docs are not part of the published site.
+	srcExclude: ['superpowers/**'],
 	markdown: { math: true },
 	themeConfig: {
 		nav: [
