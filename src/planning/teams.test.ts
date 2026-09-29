@@ -92,4 +92,10 @@ describe('teams', () => {
 		const partial = turnPressures({ ...evenPair, fillABar: 100, fillBBar: 100 })
 		expect(partial.thirdsA).toBeLessThan(turnPressures(evenPair).thirdsA)
 	})
+	it('clamps halves at 0 when the reserve exceeds the limiting fill', () => {
+		const t = turnPressures({ ...evenPair, fillABar: 30, fillBBar: 30 })
+		expect(t.halvesA).toBe(0)
+		expect(t.halvesB).toBe(0)
+		expect(t.thirdsA).toBeCloseTo(10, 9)
+	})
 })

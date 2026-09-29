@@ -16,9 +16,6 @@ export function effectiveCapacity(
 	return volumeL * (config === 'double' ? 2 : 1)
 }
 
-// Tank factor is the water capacity itself, in L/bar terms — NOT capacity divided by service
-// pressure. available_L = capacity_L × pressure_bar (used everywhere else) means
-// capacity_L already IS the liters-per-bar figure.
 /**
  * Bar-in-B per bar-in-A for an equal volume.
  * @example matchRatio(11.1, 12.9) // 0.860
@@ -38,12 +35,22 @@ export interface TurnPressureInput {
 	reserveBar: number
 }
 
-/** Turn pressures (bar) for each cylinder under thirds and halves rules, and which side limits. */
+/**
+ * Usable pressure (bar) per cylinder under the thirds and halves rules, and
+ * which side limits. Each value is the pressure the diver may breathe from
+ * that cylinder before turning, NOT the gauge reading to turn at (the turn
+ * reading is the fill pressure minus this value).
+ */
 export interface TurnPressures {
+	/** Usable bar from A under thirds: limitingVolume / 3 / capA. */
 	thirdsA: number
+	/** Usable bar from B under thirds: limitingVolume / 3 / capB. */
 	thirdsB: number
+	/** Usable bar from A under halves: (limitingVolume − limitingCap·reserve) / 2 / capA, clamped at 0. */
 	halvesA: number
+	/** Usable bar from B under halves: (limitingVolume − limitingCap·reserve) / 2 / capB, clamped at 0. */
 	halvesB: number
+	/** Cylinder holding less gas (capacity × fill); it sets the shared volume. */
 	limitingSide: 'A' | 'B'
 }
 
@@ -56,7 +63,12 @@ export interface TurnPressures {
 // point, and in a shared-air emergency the smaller tank won't have enough volume left to cover
 // both divers if pressures (rather than volumes) were matched instead.
 /**
- * Thirds and halves turn pressures for a two-diver team.
+ * Thirds and halves for a two-diver team, as usable pressure per cylinder:
+ * the bar each diver may breathe from their own cylinder before turning (not
+ * the gauge reading to turn at). The cylinder with the smaller gas volume
+ * sets a shared volume: thirds = limitingVolume / 3 / cap, halves =
+ * (limitingVolume − limitingCap · reserveBar) / 2 / cap, clamped at 0 when the
+ * reserve exceeds the limiting fill.
  * @example turnPressures({ capA: 11.1, capB: 12.9, fillABar: 200, fillBBar: 200, reserveBar: 50 }).thirdsB // 57.36
  */
 export function turnPressures({
@@ -80,7 +92,10 @@ export function turnPressures({
 
 	// No reserve subtraction on thirds — the third itself is the margin.
 	const sharedThirdVolumeL = limitingVolume / 3
-	const sharedHalfVolumeL = (limitingVolume - limitingReserveVolume) / 2
+	const sharedHalfVolumeL = Math.max(
+		0,
+		(limitingVolume - limitingReserveVolume) / 2,
+	)
 
 	return {
 		thirdsA: sharedThirdVolumeL / capA,

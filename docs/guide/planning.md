@@ -28,6 +28,14 @@ $$\text{rock bottom} = n\,s\,RMV\left(P\!\left(\tfrac d2\right)\frac{d}{r} + \su
 
 Both rules are team limits. The cylinder holding less usable volume sets a shared ceiling, and the same volume is then expressed as a pressure for each cylinder. A larger cylinder therefore shows a lower turn pressure for the same litres.
 
+Each returned value is **usable pressure**: the bar the diver may breathe from that cylinder before turning. It is not the gauge reading to turn at; the turn reading is the fill pressure minus this value. The field names (`thirdsA`, `halvesA`, …) are kept for compatibility with the rebreather app. This is a two-diver team calculation:
+
+$$\text{thirds}_X = \frac{V_{lim}}{3\,C_X} \qquad \text{halves}_X = \max\!\left(0,\ \frac{V_{lim} - C_{lim}\,R}{2\,C_X}\right)$$
+
+- $V_{lim}$: gas volume of the limiting cylinder (capacity × fill), L. $C_{lim}$: its capacity, L.
+- $C_X$: capacity of cylinder A or B, L. $R$: shared reserve, bar.
+- Halves are clamped at 0 when the reserve exceeds the limiting cylinder's fill.
+
 This is deliberate. With mismatched cylinders, matching pressure readings is unsafe: the diver on the bigger cylinder has already used more gas, and in a shared-gas emergency the smaller cylinder might not hold enough to cover both divers. Thirds have no reserve subtracted. Halves subtract the shared reserve.
 
 ## Assumptions and limits
