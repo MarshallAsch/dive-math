@@ -50,7 +50,7 @@ describe('assertGas', () => {
 		expect(() => assertGas({ fo2: 1, fhe: 0 })).not.toThrow()
 		expect(() => assertGas({ fo2: 0, fhe: 1 })).not.toThrow()
 	})
-	// Review Focus #2: sums a hair over 1 (float noise) must pass. In IEEE-754
+	// Sums a hair over 1 (float noise) must pass. In IEEE-754
 	// 0.21 + 0.79 is exactly 1, so use an explicit 1e-12 overshoot.
 	it('accepts float sums a hair over 1', () => {
 		const gas = { fo2: 0.21, fhe: 0.79 + 1e-12 }

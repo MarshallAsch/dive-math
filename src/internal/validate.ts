@@ -1,6 +1,6 @@
 import type { Gas } from '../types'
 
-/** Tolerance on fo2 + fhe ≤ 1 so float sums like 0.21 + 0.79 pass. */
+/** Tolerance on fo2 + fhe ≤ 1 so a sum a hair over 1 from float error still passes. */
 export const FRACTION_EPSILON = 1e-9
 
 export function assertFinite(name: string, value: number): void {

@@ -86,7 +86,7 @@ describe('tagged conversions', () => {
 	})
 })
 
-// Review Focus #5: UI re-edits must not drift.
+// UI re-edits must not drift.
 describe('round trips (property)', () => {
 	const value = fc.double({ min: -1e6, max: 1e6, noNaN: true })
 	const close = (a: number, b: number) =>

@@ -21,7 +21,6 @@ describe('topUp', () => {
 		expect(r.addedBar).toBe(100)
 		expect(r.noTopUp).toBe(false)
 	})
-	// Review Focus #4.
 	it('no top-up when finalBar ≤ startBar', () => {
 		const r = topUp({
 			startBar: 200,
