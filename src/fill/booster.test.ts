@@ -1,4 +1,6 @@
 import fc from 'fast-check'
+import { ATM_BAR } from '../pressure'
+import { idealEquivalentPressure } from '../real-gas'
 import { describe, it, expect } from 'vitest'
 import {
 	booster,
@@ -411,4 +413,39 @@ describe('booster input guards', () => {
 	it.each([0, 1.5, -1, NaN])('boosterFillProfile rejects steps = %s', (v) =>
 		expect(() => boosterFillProfile(base, v)).toThrow(/steps/),
 	)
+})
+
+describe('booster real-gas equalisation conserves moles', () => {
+	it('V·n(P) summed over supply and receiver is unchanged (property)', () => {
+		const mixes = [
+			{ fo2: 0.209, fhe: 0 },
+			{ fo2: 1, fhe: 0 },
+			{ fo2: 0, fhe: 1 },
+		]
+		fc.assert(
+			fc.property(
+				fc.constantFrom(...mixes),
+				fc.double({ min: 5, max: 100, noNaN: true }),
+				fc.double({ min: 50, max: 300, noNaN: true }),
+				fc.double({ min: 3, max: 20, noNaN: true }),
+				fc.double({ min: 0, max: 49, noNaN: true }),
+				(g, supplyVol, supplyStart, receiverVol, receiverStart) => {
+					const r = booster({
+						...base,
+						supplyVol,
+						supplyStart,
+						receiverVol,
+						receiverStart,
+						gas: g,
+						useRealGas: true,
+					})
+					const n = (p: number) => idealEquivalentPressure(g, p + ATM_BAR)
+					const before =
+						supplyVol * n(supplyStart) + receiverVol * n(receiverStart)
+					const after = (supplyVol + receiverVol) * n(r.eqPressure)
+					return Math.abs(after - before) < 1e-6 * before
+				},
+			),
+		)
+	})
 })

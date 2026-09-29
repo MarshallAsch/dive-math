@@ -1,6 +1,8 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
+import { gas } from '../gas'
 import { ATM_BAR } from '../pressure'
+import { idealEquivalentPressure } from '../real-gas'
 import { cascade } from './cascade'
 
 describe('cascade', () => {
@@ -238,5 +240,64 @@ describe('cascade branch coverage', () => {
 			desiredPressure: 100,
 		})
 		expect(r.banks[0]?.residualPressure).toBe(200)
+	})
+})
+
+// Moles in a cylinder, in ideal-equivalent bar·L: V · n(P_abs).
+const molesOf = (
+	g: { fo2: number; fhe: number },
+	volume: number,
+	gauge: number,
+) => volume * idealEquivalentPressure(g, gauge + ATM_BAR)
+
+describe('cascade real-gas mole conservation', () => {
+	const mixes = [gas(0.209), gas(1), gas(0, 1), gas(0.18, 0.45)]
+	it('total moles are unchanged by the fill (property)', () => {
+		fc.assert(
+			fc.property(
+				fc.constantFrom(...mixes),
+				fc.array(
+					fc.record({
+						volume: fc.double({ min: 5, max: 100, noNaN: true }),
+						pressure: fc.double({ min: 0, max: 300, noNaN: true }),
+					}),
+					{ minLength: 1, maxLength: 4 },
+				),
+				fc.double({ min: 3, max: 20, noNaN: true }),
+				fc.double({ min: 0, max: 150, noNaN: true }),
+				fc.option(fc.double({ min: 50, max: 300, noNaN: true }), {
+					nil: undefined,
+				}),
+				(g, banks, volume, startPressure, desiredPressure) => {
+					const r = cascade({
+						banks,
+						target: { volume, startPressure },
+						desiredPressure,
+						gas: g,
+						useRealGas: true,
+					})
+					const before =
+						molesOf(g, volume, startPressure) +
+						banks.reduce((a, b) => a + molesOf(g, b.volume, b.pressure), 0)
+					const after =
+						molesOf(g, volume, r.finalPressure) +
+						banks.reduce(
+							(a, b, i) =>
+								a + molesOf(g, b.volume, r.banks[i]!.residualPressure),
+							0,
+						)
+					return Math.abs(after - before) < 1e-6 * before
+				},
+			),
+		)
+	})
+	it('full equalisation leaves bank and target at the same pressure', () => {
+		const r = cascade({
+			banks: [{ volume: 50, pressure: 300 }],
+			target: { volume: 11.1, startPressure: 0 },
+			gas: gas(0, 1),
+			useRealGas: true,
+		})
+		expect(r.banks[0]!.residualPressure).toBeCloseTo(r.finalPressure, 9)
 	})
 })

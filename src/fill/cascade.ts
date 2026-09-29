@@ -5,7 +5,10 @@ import {
 	assertPositive,
 } from '../internal/validate'
 import { ATM_BAR } from '../pressure'
-import { mixZ } from '../real-gas'
+import {
+	idealEquivalentPressure,
+	realPressureForIdealEquivalent,
+} from '../real-gas'
 import type { Gas } from '../types'
 
 /** A supply bank cylinder (or bank group) used in a cascade fill. */
@@ -52,11 +55,17 @@ export function cascade(input: CascadeInput): CascadeResult {
 		assertNonNegative(`banks[${i}].pressure`, b.pressure)
 	})
 
-	const z = (abs: number) => (input.useRealGas ? mixZ(g, abs) : 1)
+	// Amount of gas per litre of cylinder: ideal-equivalent absolute bar, so
+	// V·n(P) is conserved (moles). Ideal gas: n = P_abs.
+	const real = input.useRealGas ?? false
+	const nOf = (abs: number) => (real ? idealEquivalentPressure(g, abs) : abs)
+	const pOf = (n: number) => (real ? realPressureForIdealEquivalent(g, n) : n)
 	const vt = target.volume
 	let targetAbs = target.startPressure + ATM_BAR
+	let targetN = nOf(targetAbs)
 	const desiredAbs =
 		desiredPressure !== undefined ? desiredPressure + ATM_BAR : null
+	const desiredN = desiredAbs !== null ? nOf(desiredAbs) : null
 	const residual = banks.map((b) => b.pressure)
 	const order = banks
 		.map((_, i) => i)
@@ -67,16 +76,20 @@ export function cascade(input: CascadeInput): CascadeResult {
 		const bank = banks[i]
 		const bankAbs = bank.pressure + ATM_BAR
 		if (bankAbs <= targetAbs) continue
-		const wt = vt / z(targetAbs)
-		const wb = bank.volume / z(bankAbs)
-		const eqAbs = (targetAbs * wt + bankAbs * wb) / (wt + wb)
-		if (desiredAbs !== null && eqAbs > desiredAbs) {
-			residual[i] = bankAbs - ((desiredAbs - targetAbs) * wt) / wb - ATM_BAR
+		const vb = bank.volume
+		const bankN = nOf(bankAbs)
+		// Equilibrium: Σ V·n(P_eq) = Σ V·n(P_i).
+		const eqN = (targetN * vt + bankN * vb) / (vt + vb)
+		if (desiredAbs !== null && desiredN !== null && eqN > desiredN) {
+			// Stop at the desired pressure: the bank gives up exactly the moles
+			// the target gains.
+			residual[i] = pOf(bankN - ((desiredN - targetN) * vt) / vb) - ATM_BAR
 			targetAbs = desiredAbs
 			break
 		}
-		targetAbs = eqAbs
-		residual[i] = eqAbs - ATM_BAR
+		targetN = eqN
+		targetAbs = pOf(eqN)
+		residual[i] = targetAbs - ATM_BAR
 	}
 
 	const finalPressure = targetAbs - ATM_BAR

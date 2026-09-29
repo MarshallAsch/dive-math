@@ -5,7 +5,11 @@ import {
 	assertPositive,
 } from '../internal/validate'
 import { ATM_BAR } from '../pressure'
-import { mixZ } from '../real-gas'
+import {
+	idealEquivalentPressure,
+	mixZ,
+	realPressureForIdealEquivalent,
+} from '../real-gas'
 import type { Gas } from '../types'
 
 const ATM = ATM_BAR
@@ -116,15 +120,22 @@ export interface TimingArgs {
 
 // Shared setup: the boost phase's starting conditions, after any free
 // equalization (which happens only when the supply starts above the receiver).
-// Real gas: moles ∝ V·P/Z, so the equalized pressure is the V/Z-weighted mean
-// (first-order, Z at each side's pressure) — reduces to the ideal mean when Z=1.
+// Real gas conserves moles: Σ V·n(P_eq) = Σ V·n(P_i) with n the
+// ideal-equivalent pressure, so P_eq = realPressureForIdealEquivalent of the
+// volume-weighted mean n. Ideal gas: n = P and this is the volume-weighted mean.
 function boostSetup(input: BoosterInput) {
 	const { supplyVol: vs, supplyStart, receiverVol: vr, receiverStart } = input
+	const g = input.gas ?? AIR
 	const supplyAbs = supplyStart + ATM
 	const receiverAbs = receiverStart + ATM
-	const ws = vs / zOf(input, supplyAbs)
-	const wr = vr / zOf(input, receiverAbs)
-	const eqAbs = (supplyAbs * ws + receiverAbs * wr) / (ws + wr)
+	const eqAbs = input.useRealGas
+		? realPressureForIdealEquivalent(
+				g,
+				(vs * idealEquivalentPressure(g, supplyAbs) +
+					vr * idealEquivalentPressure(g, receiverAbs)) /
+					(vs + vr),
+			)
+		: (supplyAbs * vs + receiverAbs * vr) / (vs + vr)
 	const eqPressure = eqAbs - ATM
 	const equalizes = supplyStart > receiverStart
 	const boostStartReceiver = equalizes ? eqPressure : receiverStart

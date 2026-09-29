@@ -8,13 +8,17 @@ Fill-station math: cascade filling from storage banks, air-driven boosters, and 
 
 ### Cascade equalisation
 
-Connecting a bank to the target equalises them. In absolute pressure:
+Connecting a bank to the target equalises them. Gas is conserved, so the equilibrium pressure satisfies a mole balance:
 
-$$P_{eq} = \frac{P_tV_t/Z_t + P_bV_b/Z_b}{V_t/Z_t + V_b/Z_b}$$
+$$V_t\,n(P_{eq}) + V_b\,n(P_{eq}) = V_t\,n(P_t) + V_b\,n(P_b) \qquad n(P) = \texttt{idealEquivalentPressure}(g, P)$$
 
-- $P_t$, $P_b$: absolute pressure in the target and the bank, bar.
+$$P_{eq} = \texttt{realPressureForIdealEquivalent}\!\left(g,\ \frac{V_t\,n(P_t) + V_b\,n(P_b)}{V_t + V_b}\right)$$
+
+- $P_t$, $P_b$, $P_{eq}$: absolute pressure in the target, the bank and at equilibrium, bar.
 - $V_t$, $V_b$: water volume of the target and the bank, L.
-- $Z_t$, $Z_b$: compressibility factors (1 when `useRealGas` is off).
+- $n(P)$: moles per litre of cylinder, as ideal-equivalent absolute bar. With `useRealGas` off, $n(P) = P$ and this is the volume-weighted mean $P_{eq} = (P_tV_t + P_bV_b)/(V_t + V_b)$.
+
+When `desiredPressure` stops a bank part-way, the bank gives up exactly the moles the target gains: $n_b' = n_b - (n(P_{desired}) - n_t)\,V_t/V_b$, converted back with `realPressureForIdealEquivalent`. The booster's free equalisation uses the same balance.
 
 Banks are connected lowest pressure first, and a bank at or below the target pressure is skipped.
 
@@ -45,8 +49,8 @@ $$P_{cold} = P_{hot}\,\frac{T_{cold}}{T_{hot}}$$
 
 ## Assumptions and limits
 
-- Pressures are gauge bar in inputs and results. The math converts to absolute internally.
-- The real-gas cascade and booster models use Z at each side's pressure and are first-order approximations.
+- Pressures are gauge bar in inputs and results, except `boosterTiming`'s `supplyAbsBar`, which is absolute. The math converts to absolute internally.
+- The real-gas cascade and booster equalisation are exact mole balances within the virial Z model. The booster drive-air integral and `boosterTiming` gas-per-cycle use Z at the local pressure.
 - `boosterTiming` returns `null` when the booster geometry or fill-rate limit is missing.
 - A fill that cannot be done is returned as `feasible: false` with a reason (`exceeds-stall` or `supply-insufficient`), never thrown.
 - Gay-Lussac assumes a fixed cylinder volume and a settled temperature you supply.
