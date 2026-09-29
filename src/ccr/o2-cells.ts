@@ -70,7 +70,7 @@ export const THEORETICAL_RATIO = 4.78
  * - 8 mV is an absolute floor regardless of the ratio.
  *
  * @returns The verdict, or null when the ratio test does not apply (Greenflash).
- * @throws {RangeError} If either reading is negative or not finite.
+ * @throws {RangeError} If either reading is negative or not finite, or `brand` is not in {@link O2_SENSOR_BRANDS}.
  * @example classifyO2Cell({ brand: 'Aii', ambientMv: 11, o2Mv: 52.58 })?.status // 'PASS'
  */
 export function classifyO2Cell(input: {
@@ -81,6 +81,11 @@ export function classifyO2Cell(input: {
 	const { brand, ambientMv: ambientMV, o2Mv: o2MV } = input
 	assertNonNegative('ambientMv', ambientMV)
 	assertNonNegative('o2Mv', o2MV)
+	if (!O2_SENSOR_BRANDS.includes(brand)) {
+		throw new RangeError(
+			`brand must be one of ${O2_SENSOR_BRANDS.join(', ')} (got ${String(brand)})`,
+		)
+	}
 	const range = O2_AMBIENT_RANGE[brand]
 	if (!range) return null // ratio test doesn't apply
 	const [floor, ceiling] = range

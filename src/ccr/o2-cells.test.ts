@@ -164,3 +164,12 @@ describe('classifyO2Cell', () => {
 		})
 	})
 })
+
+describe('classifyO2Cell brand guard', () => {
+	it('throws RangeError for a brand outside O2_SENSOR_BRANDS', () =>
+		expect(() => cell('Nope' as O2Brand, 11, 52)).toThrow(RangeError))
+	it('rejects prototype keys as brands', () =>
+		expect(() => cell('toString' as O2Brand, 11, 52)).toThrow(/brand/))
+	it('still returns null for Greenflash', () =>
+		expect(cell('Greenflash', 11, 52)).toBeNull())
+})
