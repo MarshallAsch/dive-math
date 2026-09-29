@@ -120,3 +120,16 @@ describe('nitroxStickSupplyDraw (ported)', () => {
 			}),
 		).toThrow(RangeError))
 })
+
+describe('nitroxStickSupplyDraw guards', () => {
+	it('rejects a final pressure below the start pressure', () =>
+		expect(() =>
+			nitroxStickSupplyDraw({
+				targetFo2: 0.32,
+				tankVolume: 11.1,
+				startPressure: 100,
+				finalPressure: 50,
+				supplyVolume: 50,
+			}),
+		).toThrow(/finalPressure/))
+})

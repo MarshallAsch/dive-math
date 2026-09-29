@@ -36,6 +36,7 @@ export interface SupplyDraw {
 
 /**
  * O₂ drawn from the supply for a nitrox-stick fill (ideal gas, gauge).
+ * @throws {RangeError} If `finalPressure` is below `startPressure`.
  * @example nitroxStickSupplyDraw({ targetFo2: 0.32, tankVolume: 11.1, startPressure: 0, finalPressure: 200, supplyVolume: 50 }).o2SurfaceVolume // 311.5
  */
 export function nitroxStickSupplyDraw(input: {
@@ -52,6 +53,11 @@ export function nitroxStickSupplyDraw(input: {
 	assertNonNegative('startPressure', startPressure)
 	assertNonNegative('finalPressure', finalPressure)
 	assertPositive('supplyVolume', supplyVolume)
+	if (finalPressure < startPressure) {
+		throw new RangeError(
+			`finalPressure (${finalPressure}) must be >= startPressure (${startPressure})`,
+		)
+	}
 	if (targetFo2 <= AIR.fo2) return { o2SurfaceVolume: 0, supplyPressureDrop: 0 }
 	const added = tankVolume * (finalPressure - startPressure)
 	const o2SurfaceVolume = (added * (targetFo2 - AIR.fo2)) / (1 - AIR.fo2)
