@@ -8,19 +8,23 @@ import { assertNonNegative } from './internal/validate'
 
 // Source: NOAA Diving Manual, oxygen partial pressure and exposure time limits.
 /** NOAA single-exposure CNS limits: ppO₂ (ata) → max minutes. */
-export const CNS_TABLE: readonly (readonly [number, number])[] = Object.freeze([
-	[0.6, 720],
-	[0.7, 570],
-	[0.8, 450],
-	[0.9, 360],
-	[1.0, 300],
-	[1.1, 240],
-	[1.2, 210],
-	[1.3, 180],
-	[1.4, 150],
-	[1.5, 120],
-	[1.6, 45],
-] as const)
+export const CNS_TABLE: readonly (readonly [number, number])[] = Object.freeze(
+	(
+		[
+			[0.6, 720],
+			[0.7, 570],
+			[0.8, 450],
+			[0.9, 360],
+			[1.0, 300],
+			[1.1, 240],
+			[1.2, 210],
+			[1.3, 180],
+			[1.4, 150],
+			[1.5, 120],
+			[1.6, 45],
+		] as const
+	).map((row) => Object.freeze(row)),
+)
 
 /** ppO₂ (ata) at or below which no OTU accrue. */
 export const OTU_THRESHOLD_PPO2 = 0.5

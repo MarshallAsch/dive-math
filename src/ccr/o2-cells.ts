@@ -29,20 +29,23 @@ export interface O2CellVerdict {
 // -2.5% and -5% before a hard FAIL below that.
 
 /** Supported O₂ sensor brands. */
-export const O2_SENSOR_BRANDS: readonly O2Brand[] = ['Aii', 'AST', 'Greenflash']
+export const O2_SENSOR_BRANDS: readonly O2Brand[] = Object.freeze([
+	'Aii',
+	'AST',
+	'Greenflash',
+])
 
 // Ambient acceptable range per brand. Greenflash is a solid-state optical sensor — no
 // current-limiting failure mode, doesn't output below ~40% O2, and the ambient/ratio test
 // described here doesn't apply to it the way it does to galvanic Aii/AST cells.
 /** Acceptable ambient mV range [floor, ceiling] per brand; null when the ratio test does not apply. */
-export const O2_AMBIENT_RANGE: Record<
-	O2Brand,
-	readonly [number, number] | null
-> = {
-	Aii: [10, 14],
-	AST: [9, 14],
+export const O2_AMBIENT_RANGE: Readonly<
+	Record<O2Brand, readonly [number, number] | null>
+> = Object.freeze({
+	Aii: Object.freeze([10, 14] as const),
+	AST: Object.freeze([9, 14] as const),
 	Greenflash: null,
-}
+})
 
 /**
  * 8 mV is an absolute hard floor, independent of manufacturer spec — nothing below it is

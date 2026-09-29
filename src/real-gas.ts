@@ -21,9 +21,15 @@ export type GasComponent = 'o2' | 'n2' | 'he'
 export const VIRIAL_COEFFICIENTS: Readonly<
 	Record<GasComponent, readonly [number, number, number]>
 > = Object.freeze({
-	o2: [-7.18092073703e-4, 2.81852572808e-6, -1.50290620492e-9],
-	n2: [-2.19260353292e-4, 2.92844845532e-6, -2.07613482075e-9],
-	he: [4.87320026468e-4, -8.83632921053e-8, 5.33304543646e-11],
+	o2: Object.freeze([
+		-7.18092073703e-4, 2.81852572808e-6, -1.50290620492e-9,
+	] as const),
+	n2: Object.freeze([
+		-2.19260353292e-4, 2.92844845532e-6, -2.07613482075e-9,
+	] as const),
+	he: Object.freeze([
+		4.87320026468e-4, -8.83632921053e-8, 5.33304543646e-11,
+	] as const),
 })
 
 /** Upper bound of the fit, bar absolute. */

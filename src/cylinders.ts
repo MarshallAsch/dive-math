@@ -16,14 +16,14 @@ import { L_PER_CUFT, PSI_PER_BAR, psiToBar } from './units'
 /** A cylinder reference-table row. */
 export interface Cylinder {
 	/** Stable identifier, e.g. `'AL80'`. */
-	id: string
-	name: string
+	readonly id: string
+	readonly name: string
 	/** Water (internal) volume, litres. */
-	volumeL: number
+	readonly volumeL: number
 	/** Service / rated pressure, bar gauge. */
-	ratedBar: number
-	material: 'aluminum' | 'steel'
-	source: string
+	readonly ratedBar: number
+	readonly material: 'aluminum' | 'steel'
+	readonly source: string
 }
 
 const LUXFER = 'Luxfer scuba cylinder specifications (3000 psi service)'
@@ -42,21 +42,23 @@ const al = (
 	name: string,
 	volumeL: number,
 	ratedBar = AL_BAR,
-): Cylinder => ({
-	id,
-	name,
-	volumeL,
-	ratedBar,
-	material: 'aluminum',
-	source: LUXFER,
-})
+): Cylinder =>
+	Object.freeze({
+		id,
+		name,
+		volumeL,
+		ratedBar,
+		material: 'aluminum',
+		source: LUXFER,
+	})
 const steel = (
 	id: string,
 	name: string,
 	volumeL: number,
 	ratedBar: number,
 	source: string,
-): Cylinder => ({ id, name, volumeL, ratedBar, material: 'steel', source })
+): Cylinder =>
+	Object.freeze({ id, name, volumeL, ratedBar, material: 'steel', source })
 
 /** Scuba cylinders. */
 export const DIVE_CYLINDERS: readonly Cylinder[] = Object.freeze([
