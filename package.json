@@ -1,0 +1,68 @@
+{
+	"name": "@marshallasch/dive-math",
+	"version": "0.0.0",
+	"description": "Scuba diving math: gas laws, MOD/END, blending, fills, oxygen exposure, gas planning and CCR loop math.",
+	"license": "MIT",
+	"author": "Marshall Asch",
+	"type": "module",
+	"sideEffects": false,
+	"engines": {
+		"node": ">=20"
+	},
+	"keywords": [
+		"scuba",
+		"diving",
+		"nitrox",
+		"trimix",
+		"blending",
+		"rebreather",
+		"ccr",
+		"mod",
+		"end"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MarshallAsch/dive-math.git"
+	},
+	"homepage": "https://marshallasch.github.io/dive-math/",
+	"bugs": "https://github.com/MarshallAsch/dive-math/issues",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE",
+		"THIRD_PARTY_NOTICES.md",
+		"MIGRATION.md",
+		"CHANGELOG.md"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint . && prettier --check .",
+		"format": "prettier --write .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^26.6.3",
+		"@vitest/coverage-v8": "^5.0.2",
+		"eslint": "^10.11.0",
+		"fast-check": "^4.10.2",
+		"prettier": "^3.9.9",
+		"tsdown": "^0.23.0",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.71.0",
+		"vitest": "^5.0.2"
+	}
+}

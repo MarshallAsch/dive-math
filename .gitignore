@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+docs/api
+docs/.vitepress/cache
+docs/.vitepress/dist
+test/examples/generated
+CHANGELOG.md
+docs/superpowers
