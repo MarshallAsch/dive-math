@@ -5,7 +5,10 @@ import {
 	assertPositive,
 } from '../internal/validate'
 import { ATM_BAR } from '../pressure'
-import { componentZ } from '../real-gas'
+import {
+	idealEquivalentPressure,
+	realPressureForIdealEquivalent,
+} from '../real-gas'
 import type { Gas } from '../types'
 
 /** Gas added during a fill: pure helium, pure oxygen or the top-up gas. */
@@ -28,7 +31,10 @@ export interface BlendInput {
 	topUpGas?: Gas
 	/** Default `['he', 'o2', 'top']`. */
 	order?: readonly BlendComponent[]
-	/** Scale pure-gas additions by Z at the absolute final pressure. Default false. */
+	/**
+	 * Solve the mole balance with real-gas compressibility and report the
+	 * gauge readings a blender sees at each step. Default false.
+	 */
 	useRealGas?: boolean
 }
 
@@ -59,6 +65,7 @@ const EPS = 1e-6
 const DEFAULT_ORDER: readonly BlendComponent[] = ['he', 'o2', 'top']
 
 interface SolveCtx {
+	/** Final amount: gauge bar (ideal) or ideal-equivalent absolute bar (real). */
 	pf: number
 	start: Gas
 	target: Gas
@@ -68,7 +75,6 @@ interface SolveCtx {
 	a21: number
 	a22: number
 	det: number
-	useRealGas: boolean
 }
 
 interface Partials {
@@ -77,20 +83,54 @@ interface Partials {
 	pTop: number
 }
 
-// Added partial pressures (pure He, pure O₂, top-up) to reach the target at
-// pf from pStart bar of the start mix: a 2×2 linear system in gauge bar.
+// Added amounts (pure He, pure O₂, top-up) to reach the target at pf from
+// pStart of the start mix: a 2×2 linear system. Ideal mode works in gauge
+// bar; real mode works in ideal-equivalent absolute bar (moles per litre).
 function solvePartials(pStart: number, ctx: SolveCtx): Partials {
 	const { pf, start, target, top, a11, a12, a21, a22, det } = ctx
 	const rem = pf - pStart
 	const bHe = target.fhe * pf - start.fhe * pStart - top.fhe * rem
 	const bO2 = target.fo2 * pf - start.fo2 * pStart - top.fo2 * rem
-	let pHe = (bHe * a22 - a12 * bO2) / det
-	let pO2 = (a11 * bO2 - bHe * a21) / det
-	if (ctx.useRealGas) {
-		pHe *= componentZ('he', pf + ATM_BAR)
-		pO2 *= componentZ('o2', pf + ATM_BAR)
-	}
+	const pHe = (bHe * a22 - a12 * bO2) / det
+	const pO2 = (a11 * bO2 - bHe * a21) / det
 	return { pHe, pO2, pTop: pf - pStart - pHe - pO2 }
+}
+
+// Real mode: replay the mole additions in fill order and convert the tank
+// contents after each step back to a gauge reading. Returns the gauge
+// increments per component, so buildResult's running sum is what the
+// blender reads on the gauge.
+function toGaugeIncrements(
+	nStart: number,
+	start: Gas,
+	moles: Partials,
+	top: Gas,
+	order: readonly BlendComponent[],
+): Partials {
+	const add: Record<BlendComponent, [number, Gas]> = {
+		he: [moles.pHe, { fo2: 0, fhe: 1 }],
+		o2: [moles.pO2, { fo2: 1, fhe: 0 }],
+		top: [moles.pTop, top],
+	}
+	let o2 = start.fo2 * nStart
+	let he = start.fhe * nStart
+	let all = nStart
+	let gauge = realPressureForIdealEquivalent(start, nStart) - ATM_BAR
+	const inc: Record<BlendComponent, number> = { he: 0, o2: 0, top: 0 }
+	for (const c of order) {
+		const [n, g] = add[c]
+		o2 += g.fo2 * n
+		he += g.fhe * n
+		all += n
+		const mix = {
+			fo2: Math.min(1, Math.max(0, o2 / all)),
+			fhe: Math.min(1, Math.max(0, he / all)),
+		}
+		const next = realPressureForIdealEquivalent(mix, all) - ATM_BAR
+		inc[c] = next - gauge
+		gauge = next
+	}
+	return { pHe: inc.he, pO2: inc.o2, pTop: inc.top }
 }
 
 function buildResult(
@@ -135,6 +175,12 @@ function assertOrder(order: readonly BlendComponent[]): void {
 /**
  * Partial-pressure blend: pure He, pure O₂, then a top-up gas, with an
  * analytic bleed-down when the start gas is in the way.
+ *
+ * With `useRealGas`, the system is solved in moles (ideal-equivalent
+ * absolute bar, see {@link idealEquivalentPressure}) and replayed in
+ * `order`; `steps[].toBar` is the gauge reading after each addition and
+ * `pHe`/`pO2`/`pTop` are the gauge increments. Infeasible real-gas results
+ * leave the partials in ideal-equivalent bar.
  * @example partialPressureBlend({ startBar: 0, startGas: AIR, finalBar: 200, targetGas: gas(0.18, 0.45) }).pHe // 90
  */
 export function partialPressureBlend(input: BlendInput): BlendResult {
@@ -164,8 +210,13 @@ export function partialPressureBlend(input: BlendInput): BlendResult {
 		return buildResult(pi, pi, zero, order, false, 'top-up-unusable')
 	}
 
+	const useRealGas = input.useRealGas ?? false
+	// Working units: gauge bar (ideal) or ideal-equivalent absolute bar,
+	// i.e. moles per container litre scaled so an ideal gas reads P_abs.
+	const amountOf = (g: Gas, gauge: number): number =>
+		useRealGas ? idealEquivalentPressure(g, gauge + ATM_BAR) : gauge
 	const ctx: SolveCtx = {
-		pf,
+		pf: amountOf(target, pf),
 		start,
 		target,
 		top,
@@ -174,44 +225,59 @@ export function partialPressureBlend(input: BlendInput): BlendResult {
 		a21,
 		a22,
 		det,
-		useRealGas: input.useRealGas ?? false,
+	}
+	const sPi = amountOf(start, pi)
+	const sEmpty = amountOf(start, 0)
+	const finish = (
+		sStart: number,
+		bleedTo: number,
+		partials: Partials,
+	): BlendResult => {
+		const shown = useRealGas
+			? toGaugeIncrements(sStart, start, partials, top, order)
+			: partials
+		return buildResult(pi, bleedTo, shown, order, true)
 	}
 
-	const primary = solvePartials(pi, ctx)
+	const primary = solvePartials(sPi, ctx)
 	if (primary.pHe >= -EPS && primary.pO2 >= -EPS && primary.pTop >= -EPS) {
-		return buildResult(pi, pi, primary, order, true)
+		return finish(sPi, pi, primary)
 	}
 	if (pi <= EPS) {
 		return buildResult(pi, pi, primary, order, false, 'drain-insufficient')
 	}
 
-	// Each partial is affine in the start pressure: rebuild each line from
-	// pStart = 0 and pStart = pi, then take the highest bleed target that
-	// keeps all three partials ≥ 0.
-	const at0 = solvePartials(0, ctx)
+	// Each partial is affine in the start amount: rebuild each line from the
+	// empty tank and the actual start, then take the highest bleed target
+	// that keeps all three partials ≥ 0.
+	const at0 = solvePartials(sEmpty, ctx)
+	const span = sPi - sEmpty
 	const lines = (
 		[
 			[at0.pHe, primary.pHe],
 			[at0.pO2, primary.pO2],
 			[at0.pTop, primary.pTop],
 		] as const
-	).map(([v0, vPi]) => ({ base: v0, slope: (vPi - v0) / pi }))
+	).map(([v0, vPi]) => ({ base: v0, slope: (vPi - v0) / span }))
 
-	let lo = 0
-	let hi = pi
+	let lo = sEmpty
+	let hi = sPi
 	let constantInfeasible = false
 	for (const { base, slope } of lines) {
 		if (Math.abs(slope) < 1e-12) {
 			if (base < -EPS) constantInfeasible = true
 		} else {
-			const cross = -base / slope
+			const cross = sEmpty - base / slope
 			if (slope > 0) lo = Math.max(lo, cross)
 			else hi = Math.min(hi, cross)
 		}
 	}
-	if (constantInfeasible || hi < lo - EPS || hi < 0) {
+	if (constantInfeasible || hi < lo - EPS || hi < sEmpty) {
 		return buildResult(pi, pi, primary, order, false, 'drain-insufficient')
 	}
-	const bleedTo = Math.max(0, Math.min(hi, pi))
-	return buildResult(pi, bleedTo, solvePartials(bleedTo, ctx), order, true)
+	const sBleed = Math.max(sEmpty, Math.min(hi, sPi))
+	const bleedTo = useRealGas
+		? Math.max(0, realPressureForIdealEquivalent(start, sBleed) - ATM_BAR)
+		: sBleed
+	return finish(sBleed, bleedTo, solvePartials(sBleed, ctx))
 }

@@ -2,7 +2,7 @@ import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { AIR, gas } from '../gas'
 import { ATM_BAR } from '../pressure'
-import { componentZ } from '../real-gas'
+import { idealEquivalentPressure } from '../real-gas'
 import type { Gas } from '../types'
 import { partialPressureBlend, type BlendResult } from './partial-pressure'
 
@@ -87,19 +87,6 @@ describe('partialPressureBlend', () => {
 		expect(r.pO2).toBeCloseTo(0, 9)
 		expect(r.pTop).toBeCloseTo(0, 9)
 		expect(r.bleedBar).toBe(0)
-	})
-	it('real gas scales pure additions by Z at absolute final pressure', () => {
-		const input = {
-			startBar: 0,
-			startGas: AIR,
-			finalBar: 200,
-			targetGas: gas(0.18, 0.45),
-		}
-		const ideal = partialPressureBlend(input)
-		const real = partialPressureBlend({ ...input, useRealGas: true })
-		expect(real.pHe).toBeCloseTo(ideal.pHe * componentZ('he', 200 + ATM_BAR), 9)
-		expect(real.pO2).toBeCloseTo(ideal.pO2 * componentZ('o2', 200 + ATM_BAR), 9)
-		expect(real.pHe).toBeGreaterThan(ideal.pHe)
 	})
 	it('hits the target mix whenever feasible (property)', () => {
 		const frac = fc.double({ min: 0, max: 1, noNaN: true })
@@ -280,20 +267,12 @@ describe('ported: fill-station', () => {
 				partialPressureBlend(input),
 			)
 		})
-		it('O2 Z relation vs ideal for a nitrox blend', () => {
-			const ideal = partialPressureBlend(input)
-			const real = partialPressureBlend({ ...input, useRealGas: true })
-			expect(real.pO2).toBeCloseTo(
-				ideal.pO2 * componentZ('o2', 200 + ATM_BAR),
-				9,
-			)
-			expect(real.pO2).toBeLessThan(ideal.pO2)
-		})
-		it('needs more helium pressure for a trimix blend (He Z > 1)', () => {
+		it('real and ideal plans differ for a trimix blend', () => {
 			const tmx = { ...input, targetGas: gas(0.18, 0.45) }
-			expect(
-				partialPressureBlend({ ...tmx, useRealGas: true }).pHe,
-			).toBeGreaterThan(partialPressureBlend(tmx).pHe)
+			const ideal = partialPressureBlend(tmx)
+			const real = partialPressureBlend({ ...tmx, useRealGas: true })
+			expect(Math.abs(real.pHe - ideal.pHe)).toBeGreaterThan(0.1)
+			expect(real.topTo).toBeCloseTo(200, 6)
 		})
 	})
 
@@ -341,5 +320,142 @@ describe('ported: fill-station', () => {
 			expect(r.feasible).toBe(false)
 			expect(r.reason).toBe('top-up-unusable')
 		})
+	})
+})
+
+// Independent real-gas fill simulator: for each step, find the moles x of
+// the added gas such that the tank (mixed) reads the step's gauge target,
+// i.e. x = idealEquivalentPressure(mix(x), toBar + ATM) − molesBefore.
+// Moles are in ideal-equivalent bar (per container litre).
+const simulateReal = (r: BlendResult, start: Gas, top: Gas) => {
+	const total = idealEquivalentPressure(start, r.bleedTo + ATM_BAR)
+	const n = { o2: start.fo2 * total, he: start.fhe * total, all: total }
+	const src: Record<string, Gas> = { he: gas(0, 1), o2: gas(1), top }
+	for (const step of r.steps) {
+		const g = src[step.gas]!
+		const pAbs = step.toBar + ATM_BAR
+		let x = 0
+		for (let i = 0; i < 500; i++) {
+			const all = n.all + x
+			const mix = {
+				fo2: Math.max(0, (n.o2 + g.fo2 * x) / all),
+				fhe: Math.max(0, (n.he + g.fhe * x) / all),
+			}
+			const next = idealEquivalentPressure(mix, pAbs) - n.all
+			if (Math.abs(next - x) < 1e-12) break
+			x = next
+		}
+		n.o2 += g.fo2 * x
+		n.he += g.fhe * x
+		n.all += x
+	}
+	return { fo2: n.o2 / n.all, fhe: n.he / n.all }
+}
+
+describe('partialPressureBlend real gas (simulated fill)', () => {
+	const cases: [string, Gas, number, Gas, number][] = [
+		['18/45 @200 from empty', AIR, 0, gas(0.18, 0.45), 200],
+		['21/35 @232 from empty', AIR, 0, gas(0.21, 0.35), 232],
+		['10/70 @232 from empty', AIR, 0, gas(0.1, 0.7), 232],
+		['EAN32 @200 from empty', AIR, 0, gas(0.32), 200],
+		[
+			'21/35 @232 over 50 bar of 18/45',
+			gas(0.18, 0.45),
+			50,
+			gas(0.21, 0.35),
+			232,
+		],
+	]
+	for (const [name, start, startBar, target, finalBar] of cases) {
+		it(`reproduces the target: ${name}`, () => {
+			const r = partialPressureBlend({
+				startBar,
+				startGas: start,
+				finalBar,
+				targetGas: target,
+				useRealGas: true,
+			})
+			expect(r.feasible).toBe(true)
+			expect(r.topTo).toBeCloseTo(finalBar, 6)
+			const got = simulateReal(r, start, AIR)
+			expect(Math.abs(got.fo2 - target.fo2)).toBeLessThan(1e-6)
+			expect(Math.abs(got.fhe - target.fhe)).toBeLessThan(1e-6)
+		})
+	}
+	it('reproduces the target with a custom order', () => {
+		const target = gas(0.18, 0.45)
+		const r = partialPressureBlend({
+			startBar: 0,
+			startGas: AIR,
+			finalBar: 200,
+			targetGas: target,
+			order: ['o2', 'he', 'top'],
+			useRealGas: true,
+		})
+		const got = simulateReal(r, AIR, AIR)
+		expect(Math.abs(got.fo2 - target.fo2)).toBeLessThan(1e-6)
+		expect(Math.abs(got.fhe - target.fhe)).toBeLessThan(1e-6)
+	})
+	it('bleeds down a rich start and then reproduces the target', () => {
+		const start = gas(0.5)
+		const target = gas(0.32)
+		const r = partialPressureBlend({
+			startBar: 150,
+			startGas: start,
+			finalBar: 200,
+			targetGas: target,
+			useRealGas: true,
+		})
+		expect(r.feasible).toBe(true)
+		expect(r.bleedTo).toBeLessThan(150)
+		expect(r.bleedBar).toBeCloseTo(150 - r.bleedTo, 10)
+		expect(r.pO2).toBeCloseTo(0, 6)
+		const got = simulateReal(r, start, AIR)
+		expect(Math.abs(got.fo2 - target.fo2)).toBeLessThan(1e-6)
+		expect(Math.abs(got.fhe - target.fhe)).toBeLessThan(1e-6)
+	})
+	it('reports drain-insufficient when even empty cannot reach the target', () => {
+		const r = partialPressureBlend({
+			startBar: 150,
+			startGas: AIR,
+			finalBar: 200,
+			targetGas: gas(0.15),
+			useRealGas: true,
+		})
+		expect(r.feasible).toBe(false)
+		expect(r.reason).toBe('drain-insufficient')
+		expect(r.bleedTo).toBe(150)
+	})
+	it('hits the target mix whenever feasible (property)', () => {
+		const frac = fc.double({ min: 0, max: 1, noNaN: true })
+		fc.assert(
+			fc.property(
+				fc.double({ min: 0.1, max: 0.5, noNaN: true }),
+				frac,
+				fc.double({ min: 0, max: 200, noNaN: true }),
+				fc.double({ min: 0.1, max: 1, noNaN: true }),
+				frac,
+				(tFo2, tHeShare, startBar, sFo2, sHeShare) => {
+					const target = gas(tFo2, (1 - tFo2) * tHeShare * 0.8)
+					const start = gas(sFo2, (1 - sFo2) * sHeShare)
+					const r = partialPressureBlend({
+						startBar,
+						startGas: start,
+						finalBar: 220,
+						targetGas: target,
+						useRealGas: true,
+					})
+					if (!r.feasible) return true
+					const got = simulateReal(r, start, AIR)
+					return (
+						Math.abs(got.fo2 - target.fo2) < 1e-6 &&
+						Math.abs(got.fhe - target.fhe) < 1e-6 &&
+						r.pHe >= -1e-6 &&
+						r.pO2 >= -1e-6 &&
+						r.pTop >= -1e-6
+					)
+				},
+			),
+		)
 	})
 })

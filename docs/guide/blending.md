@@ -45,7 +45,16 @@ When no plan exists the result has `feasible: false` and a `reason`. It is never
 
 ## What `useRealGas` does
 
-With `useRealGas: true`, the pure-gas additions in `partialPressureBlend` are scaled by the component Z at the absolute final pressure (an approximation). `topUp` iterates the mole balance with Z of the start and final mix, up to 10 fixed-point steps. See [Real gas](./real-gas).
+With `useRealGas: true`, `partialPressureBlend` solves the same 2×2 system in moles instead of gauge bar. Amounts are expressed as ideal-equivalent absolute pressure $n = $ `idealEquivalentPressure(mix, P_abs)` (moles per container litre, scaled so an ideal gas gives $n = P_{abs}$):
+
+- Final contents: the final mix is the target, so $n_f = n(F_{target}, P_f + 1.01325)$. Start contents: $n_s = n(F_s, P_s + 1.01325)$.
+- The system above is solved with $n_f$ and $n_s$ in place of $P_f$ and $P_s$, giving moles of pure He, pure O₂ and top-up ($n_{top} = n_f - n_s - n_{He} - n_{O_2}$).
+- The additions are replayed in `order`. After each one the tank mix and total moles are known, and the gauge reading is `realPressureForIdealEquivalent(mixSoFar, nSoFar) − 1.01325`. `steps[].toBar` is that reading, and `pHe`, `pO2`, `pTop` (and `steps[].addBar`) are the gauge increments between steps, so they depend on `order`.
+- Bleed-down works on $n_s$ exactly as in ideal mode (the partials are affine in $n_s$; an empty cylinder still holds $n(F_s, 1.01325)$), and `bleedTo` is `realPressureForIdealEquivalent(startGas, n_s) − 1.01325`, clamped at 0.
+
+This is an exact mole balance within the virial model, not a Z-scaling approximation. When the result is infeasible the partials are left in ideal-equivalent bar, since no fill exists to replay.
+
+`topUp` iterates the mole balance with Z of the start and final mix, up to 10 fixed-point steps. See [Real gas](./real-gas).
 
 ## Assumptions and limits
 
@@ -57,7 +66,7 @@ With `useRealGas: true`, the pure-gas additions in `partialPressureBlend` are sc
 
 ## Sources
 
-The library cites no external source for these. `topUp` uses mole balances on absolute pressures, while `partialPressureBlend` and the nitrox-stick supply draw are ideal-gas balances in gauge bar.
+The library cites no external source for these. `topUp` uses mole balances on absolute pressures, while `partialPressureBlend` (ideal mode) and the nitrox-stick supply draw are ideal-gas balances in gauge bar. `partialPressureBlend` with `useRealGas` is a mole balance on the virial Z model.
 
 ## Examples
 
