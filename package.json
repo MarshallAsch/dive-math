@@ -107,10 +107,12 @@
 		"docs:api": "typedoc",
 		"docs:dev": "npm run docs:api && vitepress dev docs",
 		"docs:build": "npm run docs:api && vitepress build docs",
-		"check:package": "publint && attw --pack --profile esm-only"
+		"check:package": "publint && attw --pack --profile esm-only",
+		"release": "npm run build && changeset publish"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.5",
+		"@changesets/cli": "^3.0.3",
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^26.6.3",
 		"@vitest/coverage-v8": "^5.0.2",
