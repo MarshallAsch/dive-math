@@ -426,6 +426,58 @@ describe('partialPressureBlend real gas (simulated fill)', () => {
 		expect(r.reason).toBe('drain-insufficient')
 		expect(r.bleedTo).toBe(150)
 	})
+	it('reports infeasible results in gauge bar (the ideal-gas solution)', () => {
+		const input = {
+			startBar: 150,
+			startGas: AIR,
+			finalBar: 200,
+			targetGas: gas(0.15),
+		}
+		const real = partialPressureBlend({ ...input, useRealGas: true })
+		const ideal = partialPressureBlend(input)
+		expect(real.feasible).toBe(false)
+		expect(real).toEqual(ideal)
+		expect(real.topTo).toBeCloseTo(200, 9)
+		expect(real.steps.at(-1)?.toBar).toBeCloseTo(200, 9)
+	})
+	// Ideal mode can bleed a 10/70 tank to 0 bar gauge; real mode keeps the
+	// 1 atm residual, so the conversion is infeasible — still in gauge bar.
+	it('reports real-only infeasibility in gauge bar', () => {
+		const r = partialPressureBlend({
+			startBar: 200,
+			startGas: gas(0.1, 0.7),
+			finalBar: 200,
+			targetGas: gas(0.32),
+			useRealGas: true,
+		})
+		expect(r.feasible).toBe(false)
+		expect(r.bleedTo).toBe(200)
+		expect(r.topTo).toBeCloseTo(200, 9)
+		expect(r.pHe + r.pO2 + r.pTop).toBeCloseTo(0, 9)
+	})
+	it('infeasible results always end at finalBar gauge (property)', () => {
+		const frac = fc.double({ min: 0, max: 1, noNaN: true })
+		fc.assert(
+			fc.property(
+				fc.double({ min: 0.05, max: 1, noNaN: true }),
+				frac,
+				fc.double({ min: 0, max: 250, noNaN: true }),
+				fc.double({ min: 0.05, max: 1, noNaN: true }),
+				frac,
+				(tFo2, tHeShare, startBar, sFo2, sHeShare) => {
+					const r = partialPressureBlend({
+						startBar,
+						startGas: gas(sFo2, (1 - sFo2) * sHeShare),
+						finalBar: 220,
+						targetGas: gas(tFo2, (1 - tFo2) * tHeShare),
+						useRealGas: true,
+					})
+					if (r.feasible || r.reason === 'top-up-unusable') return true
+					return Math.abs(r.topTo - 220) < 1e-9
+				},
+			),
+		)
+	})
 	it('hits the target mix whenever feasible (property)', () => {
 		const frac = fc.double({ min: 0, max: 1, noNaN: true })
 		fc.assert(

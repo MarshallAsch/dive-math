@@ -52,7 +52,7 @@ With `useRealGas: true`, `partialPressureBlend` solves the same 2×2 system in m
 - The additions are replayed in `order`. After each one the tank mix and total moles are known, and the gauge reading is `realPressureForIdealEquivalent(mixSoFar, nSoFar) − 1.01325`. `steps[].toBar` is that reading, and `pHe`, `pO2`, `pTop` (and `steps[].addBar`) are the gauge increments between steps, so they depend on `order`.
 - Bleed-down works on $n_s$ exactly as in ideal mode (the partials are affine in $n_s$; an empty cylinder still holds $n(F_s, 1.01325)$), and `bleedTo` is `realPressureForIdealEquivalent(startGas, n_s) − 1.01325`, clamped at 0.
 
-This is an exact mole balance within the virial model, not a Z-scaling approximation. When the result is infeasible the partials are left in ideal-equivalent bar, since no fill exists to replay.
+This is an exact mole balance within the virial model, not a Z-scaling approximation. Every pressure in the result is gauge bar. When the result is infeasible there is no real fill to replay, so it reports the ideal-gas solution from the unbled start; its (possibly negative) partials show the shortfall. Real-gas mode can be infeasible where ideal mode is not: the last 1 atm of start gas can never be bled out, so, for example, converting a full 10/70 cylinder to EAN32 at the same pressure would need a drain below 0 bar gauge.
 
 `topUp` iterates the mole balance with Z of the start and final mix, up to 10 fixed-point steps. See [Real gas](./real-gas).
 

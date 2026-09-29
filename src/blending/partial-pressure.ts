@@ -179,8 +179,9 @@ function assertOrder(order: readonly BlendComponent[]): void {
  * With `useRealGas`, the system is solved in moles (ideal-equivalent
  * absolute bar, see {@link idealEquivalentPressure}) and replayed in
  * `order`; `steps[].toBar` is the gauge reading after each addition and
- * `pHe`/`pO2`/`pTop` are the gauge increments. Infeasible real-gas results
- * leave the partials in ideal-equivalent bar.
+ * `pHe`/`pO2`/`pTop` are the gauge increments. All pressures are gauge bar
+ * in every case; an infeasible result reports the ideal-gas solution from
+ * the unbled start, so its (possibly negative) partials show the shortfall.
  * @example partialPressureBlend({ startBar: 0, startGas: AIR, finalBar: 200, targetGas: gas(0.18, 0.45) }).pHe // 90
  */
 export function partialPressureBlend(input: BlendInput): BlendResult {
@@ -238,14 +239,23 @@ export function partialPressureBlend(input: BlendInput): BlendResult {
 			: partials
 		return buildResult(pi, bleedTo, shown, order, true)
 	}
+	// No real fill exists to replay, so an infeasible result reports the
+	// ideal-gas solution from the unbled start — gauge bar, like everything else.
+	const infeasible = (): BlendResult =>
+		buildResult(
+			pi,
+			pi,
+			useRealGas ? solvePartials(pi, { ...ctx, pf }) : primary,
+			order,
+			false,
+			'drain-insufficient',
+		)
 
 	const primary = solvePartials(sPi, ctx)
 	if (primary.pHe >= -EPS && primary.pO2 >= -EPS && primary.pTop >= -EPS) {
 		return finish(sPi, pi, primary)
 	}
-	if (pi <= EPS) {
-		return buildResult(pi, pi, primary, order, false, 'drain-insufficient')
-	}
+	if (pi <= EPS) return infeasible()
 
 	// Each partial is affine in the start amount: rebuild each line from the
 	// empty tank and the actual start, then take the highest bleed target
@@ -272,9 +282,7 @@ export function partialPressureBlend(input: BlendInput): BlendResult {
 			else hi = Math.min(hi, cross)
 		}
 	}
-	if (constantInfeasible || hi < lo - EPS || hi < sEmpty) {
-		return buildResult(pi, pi, primary, order, false, 'drain-insufficient')
-	}
+	if (constantInfeasible || hi < lo - EPS || hi < sEmpty) return infeasible()
 	const sBleed = Math.max(sEmpty, Math.min(hi, sPi))
 	const bleedTo = useRealGas
 		? Math.max(0, realPressureForIdealEquivalent(start, sBleed) - ATM_BAR)
