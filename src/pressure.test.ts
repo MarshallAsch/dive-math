@@ -111,3 +111,10 @@ describe('ported: fill-station', () => {
 		expect(ataAtDepth(10.3, { water: 'fresh' })).toBeCloseTo(2, 6)
 	})
 })
+
+describe('metersPerBar guard', () => {
+	it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])(
+		'rejects prototype key %s',
+		(w) => expect(() => metersPerBar(w as Water)).toThrow(RangeError),
+	)
+})

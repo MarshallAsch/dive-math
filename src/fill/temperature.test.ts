@@ -20,10 +20,13 @@ describe('hot fill (Gay-Lussac, absolute pressure)', () => {
 				fc.double({ min: 0, max: 300, noNaN: true }),
 				fc.double({ min: -20, max: 80, noNaN: true }),
 				fc.double({ min: -20, max: 80, noNaN: true }),
-				(bar, hot, cold) =>
-					Math.abs(
-						settledPressure(hotTarget(bar, hot, cold), hot, cold) - bar,
-					) < 1e-9,
+				(bar, hot, cold) => {
+					// settledPressure takes a gauge pressure (>= 0); a fill colder
+					// than the settled temperature can need a sub-atmospheric one.
+					const hotBar = hotTarget(bar, hot, cold)
+					fc.pre(hotBar >= 0)
+					return Math.abs(settledPressure(hotBar, hot, cold) - bar) < 1e-9
+				},
 			),
 		)
 	})
@@ -88,4 +91,13 @@ describe('temperature (ported)', () => {
 		expect(hot).toBeGreaterThan(200)
 		expect(hot).toBeCloseTo((201.013 * 313.15) / 293.15 - 1.01325, 2)
 	})
+})
+
+describe('gauge pressure guards', () => {
+	it('settledPressure rejects a negative hotBar', () =>
+		expect(() => settledPressure(-1, 40, 20)).toThrow(/hotBar/))
+	it('hotTarget rejects a negative coldBar', () =>
+		expect(() => hotTarget(-1, 40, 20)).toThrow(/coldBar/))
+	it('zero gauge is allowed', () =>
+		expect(settledPressure(0, 20, 20)).toBeCloseTo(0, 12))
 })

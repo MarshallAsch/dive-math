@@ -37,13 +37,12 @@ export interface DepthOptions {
 
 /** Metres per bar for a water type. @example metersPerBar('fresh') // 10.3 */
 export function metersPerBar(water: Water = 'salt'): number {
-	const m = METERS_PER_BAR[water]
-	if (m === undefined) {
+	if (!Object.hasOwn(METERS_PER_BAR, water)) {
 		throw new RangeError(
 			`water must be 'salt' or 'fresh' (got ${String(water)})`,
 		)
 	}
-	return m
+	return METERS_PER_BAR[water]
 }
 
 /** Resolved surface pressure, ata. @example surfacePressure({ surfacePressure: 0.8 }) // 0.8 */

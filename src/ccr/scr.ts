@@ -34,11 +34,16 @@ export function scrLoopFo2(input: {
 
 /**
  * Fresh-gas addition of a passive SCR, surface L/min: a fixed 1/ratio of
- * each breath is dumped at ambient pressure and replaced.
+ * each breath is dumped at ambient pressure and replaced. `rmvLpm` is the
+ * diver's actual (depth-independent) ventilation, not a surface SAC.
  * @example passiveScrSupplyRate({ rmvLpm: 20, bellowsRatio: 10, depthM: 30 }) // 8
  */
 export function passiveScrSupplyRate(
 	input: {
+		/**
+		 * Actual ventilation, L/min of gas moved through the loop at depth
+		 * (depth-independent for a given workload). Not surface SAC/RMV.
+		 */
 		rmvLpm: number
 		bellowsRatio: number
 		depthM: number

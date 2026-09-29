@@ -18,6 +18,8 @@ export function sacPressureRate(input: PressureLog): number {
 	assertNonNegative('startP', startP)
 	assertNonNegative('endP', endP)
 	assertPositive('minutes', minutes)
+	if (endP > startP)
+		throw new RangeError(`endP (${endP}) must be <= startP (${startP})`)
 	return (startP - endP) / minutes / ataAtDepth(avgDepthM, opts)
 }
 

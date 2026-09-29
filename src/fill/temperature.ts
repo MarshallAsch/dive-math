@@ -1,4 +1,4 @@
-import { assertFinite } from '../internal/validate'
+import { assertFinite, assertNonNegative } from '../internal/validate'
 import { ATM_BAR } from '../pressure'
 import { KELVIN_OFFSET } from '../units'
 
@@ -19,7 +19,7 @@ export function settledPressure(
 	fillTempC: number,
 	settledTempC: number,
 ): number {
-	assertFinite('hotBar', hotBar)
+	assertNonNegative('hotBar', hotBar)
 	return (
 		((hotBar + ATM_BAR) * kelvin('settledTempC', settledTempC)) /
 			kelvin('fillTempC', fillTempC) -
@@ -33,7 +33,7 @@ export function hotTarget(
 	fillTempC: number,
 	settledTempC: number,
 ): number {
-	assertFinite('coldBar', coldBar)
+	assertNonNegative('coldBar', coldBar)
 	return (
 		((coldBar + ATM_BAR) * kelvin('fillTempC', fillTempC)) /
 			kelvin('settledTempC', settledTempC) -

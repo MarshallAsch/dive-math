@@ -85,3 +85,11 @@ describe('consumption', () => {
 	it('ccrO2Rate rejects zero duration', () =>
 		expect(() => ccrO2Rate(48, 0)).toThrow(RangeError))
 })
+
+describe('pressure-log guards', () => {
+	const log = { startP: 100, endP: 150, minutes: 20, avgDepthM: 10 }
+	it('sacPressureRate rejects endP > startP', () =>
+		expect(() => sacPressureRate(log)).toThrow(/endP/))
+	it('rmv rejects endP > startP', () =>
+		expect(() => rmv({ ...log, tankVolumeL: 12 })).toThrow(RangeError))
+})
