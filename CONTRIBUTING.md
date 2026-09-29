@@ -8,7 +8,7 @@ npm test
 npm run docs:dev
 ```
 
-`npm test` first regenerates the doc-example tests (`pretest`), then runs Vitest.
+`npm test` first regenerates the doc-example tests (`scripts/extract-examples.mjs`), then runs Vitest.
 
 ## Sources for constants and reference values
 

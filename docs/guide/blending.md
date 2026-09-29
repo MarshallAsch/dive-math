@@ -57,7 +57,7 @@ With `useRealGas: true`, the pure-gas additions in `partialPressureBlend` are sc
 
 ## Sources
 
-The library cites no external source for these; they are mole balances applied to absolute pressures.
+The library cites no external source for these. `topUp` uses mole balances on absolute pressures, while `partialPressureBlend` and the nitrox-stick supply draw are ideal-gas balances in gauge bar.
 
 ## Examples
 
