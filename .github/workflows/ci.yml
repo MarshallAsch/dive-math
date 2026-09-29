@@ -19,6 +19,7 @@ jobs:
       - run: npm run test:coverage
       - run: npm run build
       - run: npm run check:package
+      - run: npm run docs:build
 
   test-node-matrix:
     runs-on: ubuntu-latest

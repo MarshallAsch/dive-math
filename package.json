@@ -101,9 +101,13 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint . && prettier --check .",
 		"format": "prettier --write .",
+		"pretest": "node scripts/extract-examples.mjs",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
+		"test:coverage": "node scripts/extract-examples.mjs && vitest run --coverage",
+		"docs:api": "typedoc",
+		"docs:dev": "npm run docs:api && vitepress dev docs",
+		"docs:build": "npm run docs:api && vitepress build docs",
 		"check:package": "publint && attw --pack --profile esm-only"
 	},
 	"devDependencies": {
@@ -113,11 +117,16 @@
 		"@vitest/coverage-v8": "^5.0.2",
 		"eslint": "^10.11.0",
 		"fast-check": "^4.10.2",
+		"markdown-it-mathjax3": "^4.3.2",
 		"prettier": "^3.9.9",
 		"publint": "^0.3.24",
 		"tsdown": "^0.23.0",
+		"typedoc": "^0.28.20",
+		"typedoc-plugin-markdown": "^4.13.1",
+		"typedoc-vitepress-theme": "^1.1.4",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.71.0",
+		"vitepress": "^1.6.4",
 		"vitest": "^5.0.2"
 	}
 }

@@ -39,6 +39,7 @@ export interface BoosterPreset {
 //   The ratio is set by the gas piston, not the drive, so the swept volume is
 //   identical across AG-30…AG-152 (AG-62/102/152 are tandem two-stage gas
 //   barrels on the same drive).
+/** Built-in gas booster presets (Haskel AG, USUN); see the source notes above for how each is modelled. */
 export const BOOSTERS: readonly BoosterPreset[] = Object.freeze([
 	// Shared 5.75 in × 3.6 in drive head → π/4·146²·91.6 ≈ 1.535 L per stroke.
 	{

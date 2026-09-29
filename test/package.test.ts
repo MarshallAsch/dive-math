@@ -38,4 +38,14 @@ describe('package surface', () => {
 		for (const file of Object.values(entry))
 			expect(existsSync(new URL(`../${file}`, import.meta.url))).toBe(true)
 	})
+	it('typedoc documents exactly the tsdown entries minus index', () => {
+		const typedoc = JSON.parse(
+			readFileSync(new URL('../typedoc.json', import.meta.url), 'utf8'),
+		) as { entryPoints: string[] }
+		const entry = (config as { entry: Record<string, string> }).entry
+		const expected = Object.entries(entry)
+			.filter(([name]) => name !== 'index')
+			.map(([, file]) => file)
+		expect([...typedoc.entryPoints].sort()).toEqual(expected.sort())
+	})
 })

@@ -14,10 +14,15 @@ export const FT_PER_M = 3.280839895
 /** 0 °C in kelvin. Source: SI definition. */
 export const KELVIN_OFFSET = 273.15
 
+/** Pressure unit: bar or psi. */
 export type PressureUnit = 'bar' | 'psi'
+/** Depth unit: metres or feet. */
 export type DepthUnit = 'm' | 'ft'
+/** Volume unit: litres or cubic feet. */
 export type VolumeUnit = 'l' | 'cf'
+/** Flow-rate unit: litres or cubic feet per minute. */
 export type FlowUnit = 'lpm' | 'cfm'
+/** Temperature unit: Celsius or Fahrenheit. */
 export type TempUnit = 'C' | 'F'
 
 /** bar → psi. @example barToPsi(200) // 2900.75 */

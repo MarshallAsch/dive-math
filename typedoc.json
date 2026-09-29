@@ -1,0 +1,38 @@
+{
+	"$schema": "https://typedoc-plugin-markdown.org/schema.json",
+	"entryPoints": [
+		"src/units.ts",
+		"src/pressure.ts",
+		"src/altitude.ts",
+		"src/gas.ts",
+		"src/density.ts",
+		"src/real-gas.ts",
+		"src/cylinders.ts",
+		"src/equipment.ts",
+		"src/blending/index.ts",
+		"src/fill/index.ts",
+		"src/oxygen.ts",
+		"src/planning/index.ts",
+		"src/ccr/index.ts"
+	],
+	"plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+	"out": "docs/api",
+	"docsRoot": "docs",
+	"readme": "none",
+	"sourceLinkTemplate": "https://github.com/MarshallAsch/dive-math/blob/main/{path}#L{line}",
+	"excludeInternal": true,
+	"validation": {
+		"notDocumented": true,
+		"invalidLink": true,
+		"notExported": true
+	},
+	"requiredToBeDocumented": [
+		"Function",
+		"Variable",
+		"Class",
+		"Interface",
+		"TypeAlias",
+		"Enum"
+	],
+	"treatWarningsAsErrors": true
+}
