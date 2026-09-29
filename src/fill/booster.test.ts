@@ -299,3 +299,72 @@ describe('booster (library additions)', () => {
 		)
 	})
 })
+
+describe('booster branch coverage', () => {
+	const t: TimingArgs = { ...timing, compressorRateLpm: 10 }
+	it('real-gas defaults the boosted gas to air', () => {
+		const r = booster({ ...base, useRealGas: true })
+		expect(r.feasible).toBe(true)
+		expect(r.eqPressure).not.toBeCloseTo(booster(base).eqPressure, 3)
+	})
+	it('real-gas timing scales gas per cycle by 1/Z (default and explicit gas)', () => {
+		const ideal = boosterTiming(timing)!
+		const air = boosterTiming({ ...timing, useRealGas: true })!
+		const o2 = boosterTiming({
+			...timing,
+			useRealGas: true,
+			gas: { fo2: 1, fhe: 0 },
+		})!
+		expect(air.cycleRatePerSec).not.toBeCloseTo(ideal.cycleRatePerSec, 4)
+		expect(o2.cycleRatePerSec).not.toBeCloseTo(air.cycleRatePerSec, 6)
+	})
+	it('no compressor means zero duty and no stall', () => {
+		const r = boosterTiming({ ...timing, compressorRateLpm: 0 })!
+		expect(r.dutyCycle).toBe(0)
+		expect(r.dutyContinuous).toBe(false)
+		expect(r.stallSeconds).toBeNull()
+	})
+	it('a compressor lagging without a buffer never reports a stall', () => {
+		const r = boosterTiming(t)!
+		expect(r.dutyContinuous).toBe(true)
+		expect(r.stallSeconds).toBeNull()
+	})
+	it('a big buffer outlasts the fill, so no stall', () => {
+		const r = boosterTiming({
+			...t,
+			storageL: 10000,
+			storageMaxBar: 300,
+			storageMinBar: 9,
+		})!
+		expect(r.dutyContinuous).toBe(true)
+		expect(r.stallSeconds).toBeNull()
+	})
+	it('profile with timing but no storage has no buffer fields', () => {
+		const p = boosterFillProfile(base, 10, { ...timing, compressorRateLpm: 0 })
+		expect(p[0].timeSeconds).toBe(0)
+		expect(p[0].driveBufferFrac).toBeUndefined()
+	})
+	it('profile timing without equalization starts boosting at time zero', () => {
+		const noEq = { ...base, supplyStart: 40, receiverStart: 60 }
+		const p = boosterFillProfile(noEq, 10, timing)
+		expect(p[0].timeSeconds).toBe(0)
+		expect(p[0].cycleRatePerSec).toBe(0)
+		expect(p[10].cycleRatePerSec).toBeGreaterThan(0)
+	})
+	it('supply-limited fill profile stops at the reachable pressure', () => {
+		const lim = { ...base, supplyVol: 2, receiverStart: 0, target: 280 }
+		const p = boosterFillProfile(lim, 10)
+		expect(p[10].receiverP).toBeCloseTo(booster(lim).supplyLimitedMax!, 6)
+	})
+	it('regulated inlet caps the profile drive air', () => {
+		const p = boosterFillProfile({ ...base, regulatedInletBar: 60 }, 10)
+		expect(p[10].cumulativeDriveL).toBeGreaterThan(
+			boosterFillProfile(base, 10)[10].cumulativeDriveL,
+		)
+	})
+	it('rejects a negative regulated inlet', () => {
+		expect(() => booster({ ...base, regulatedInletBar: -1 })).toThrow(
+			RangeError,
+		)
+	})
+})

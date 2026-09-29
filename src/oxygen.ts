@@ -43,6 +43,7 @@ export function cnsLimitMinutes(ppo2: number): number {
 			return l0 + t * (l1 - l0)
 		}
 	}
+	/* v8 ignore next */
 	return last[1]
 }
 

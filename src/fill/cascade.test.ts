@@ -229,3 +229,14 @@ describe('cascade real-gas opt-in', () => {
 		expect(Math.abs(real.finalPressure - ideal.finalPressure)).toBeLessThan(10)
 	})
 })
+
+describe('cascade branch coverage', () => {
+	it('skips every bank when the target already sits at the desired pressure', () => {
+		const r = cascade({
+			banks: [{ volume: 50, pressure: 200 }],
+			target: { volume: 11.1, startPressure: 100 },
+			desiredPressure: 100,
+		})
+		expect(r.banks[0]?.residualPressure).toBe(200)
+	})
+})

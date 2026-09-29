@@ -91,5 +91,6 @@ export function realPressureForIdealEquivalent(
 		if (Math.abs(next - p) < 1e-10) return next
 		p = next
 	}
-	return p
+	/* v8 ignore next */
+	throw new RangeError('realPressureForIdealEquivalent did not converge')
 }

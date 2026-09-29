@@ -39,6 +39,58 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
+		"./units": {
+			"types": "./dist/units.d.ts",
+			"import": "./dist/units.js"
+		},
+		"./pressure": {
+			"types": "./dist/pressure.d.ts",
+			"import": "./dist/pressure.js"
+		},
+		"./altitude": {
+			"types": "./dist/altitude.d.ts",
+			"import": "./dist/altitude.js"
+		},
+		"./gas": {
+			"types": "./dist/gas.d.ts",
+			"import": "./dist/gas.js"
+		},
+		"./density": {
+			"types": "./dist/density.d.ts",
+			"import": "./dist/density.js"
+		},
+		"./real-gas": {
+			"types": "./dist/real-gas.d.ts",
+			"import": "./dist/real-gas.js"
+		},
+		"./cylinders": {
+			"types": "./dist/cylinders.d.ts",
+			"import": "./dist/cylinders.js"
+		},
+		"./equipment": {
+			"types": "./dist/equipment.d.ts",
+			"import": "./dist/equipment.js"
+		},
+		"./blending": {
+			"types": "./dist/blending.d.ts",
+			"import": "./dist/blending.js"
+		},
+		"./fill": {
+			"types": "./dist/fill.d.ts",
+			"import": "./dist/fill.js"
+		},
+		"./oxygen": {
+			"types": "./dist/oxygen.d.ts",
+			"import": "./dist/oxygen.js"
+		},
+		"./planning": {
+			"types": "./dist/planning.d.ts",
+			"import": "./dist/planning.js"
+		},
+		"./ccr": {
+			"types": "./dist/ccr.d.ts",
+			"import": "./dist/ccr.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {
@@ -51,15 +103,18 @@
 		"format": "prettier --write .",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"check:package": "publint && attw --pack --profile esm-only"
 	},
 	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.18.5",
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^26.6.3",
 		"@vitest/coverage-v8": "^5.0.2",
 		"eslint": "^10.11.0",
 		"fast-check": "^4.10.2",
 		"prettier": "^3.9.9",
+		"publint": "^0.3.24",
 		"tsdown": "^0.23.0",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.71.0",
