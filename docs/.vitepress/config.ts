@@ -24,6 +24,8 @@ export default defineConfig({
 	description: 'Scuba diving math for TypeScript',
 	base: '/dive-math/',
 	cleanUrls: true,
+	lastUpdated: true,
+	sitemap: { hostname: 'https://marshallasch.github.io/dive-math/' },
 	// Internal plan/spec docs are not part of the published site.
 	srcExclude: ['superpowers/**'],
 	markdown: { math: true },
@@ -52,6 +54,10 @@ export default defineConfig({
 			{ icon: 'github', link: 'https://github.com/MarshallAsch/dive-math' },
 		],
 		search: { provider: 'local' },
+		editLink: {
+			pattern: 'https://github.com/MarshallAsch/dive-math/edit/main/docs/:path',
+			text: 'Edit this page on GitHub',
+		},
 		footer: {
 			message:
 				'Reference only — verify every fill and dive plan independently.',
