@@ -48,8 +48,13 @@ describe('bailoutPlan', () => {
 		expect(total(b)).toBeCloseTo(total(plain) * 1.5, 6)
 		expect(b.gasRequired.map((g) => g.gas.fo2)).toEqual([0.18, 0.5, 1])
 	})
-	it('the CCR plan itself is unchanged by planning a bailout', () =>
-		expect(planDive(input).runtimeMinutes).toBe(planDive(input).runtimeMinutes))
+	it('the CCR plan itself is unchanged by planning a bailout', () => {
+		const before = planDive(input)
+		const snapshot = structuredClone(input)
+		bailoutPlan(input, { bailoutGases, rmvLpm: 20 })
+		expect(planDive(input)).toEqual(before)
+		expect(input).toEqual(snapshot)
+	})
 	it('warns when no bailout gas is breathable at depth', () => {
 		const r = bailoutPlan(input, {
 			bailoutGases: [gas(0.8), gas(0.5)],
@@ -59,6 +64,11 @@ describe('bailoutPlan', () => {
 			code: 'no-breathable-gas',
 			depthM: 60,
 		})
+		expect(
+			r.plan.warnings.filter(
+				(w) => w.code === 'no-breathable-gas' && w.depthM === 60,
+			),
+		).toHaveLength(1)
 	})
 	it('starts on the richest bailout gas breathable at depth', () => {
 		const r = bailoutPlan(input, {

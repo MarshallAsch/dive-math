@@ -67,8 +67,6 @@ export function bailoutPlan(
 		? breathable.reduce((a, b) => (b.fo2 > a.fo2 ? b : a))
 		: byO2[0]
 	const warnings: PlanWarning[] = [...bottom.warnings]
-	if (breathable.length === 0)
-		warnings.push({ code: 'no-breathable-gas', depthM })
 
 	const up = ascend(
 		{
@@ -80,8 +78,13 @@ export function bailoutPlan(
 		},
 		{ ...r, decoGases: bailout.bailoutGases },
 	)
+	// The start depth and ascent-reported depths may coincide; warn once each.
+	const noGasDepths = new Set([
+		...(breathable.length === 0 ? [depthM] : []),
+		...up.noBreathableGasAt,
+	])
 	warnings.push(
-		...[...new Set(up.noBreathableGasAt)].map((d) => ({
+		...[...noGasDepths].map((d) => ({
 			code: 'no-breathable-gas' as const,
 			depthM: d,
 		})),
