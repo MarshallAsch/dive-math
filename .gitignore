@@ -6,3 +6,5 @@ docs/.vitepress/cache
 docs/.vitepress/dist
 test/examples/generated
 docs/superpowers
+test/fixtures/shearwater/*
+!test/fixtures/shearwater/.gitkeep
