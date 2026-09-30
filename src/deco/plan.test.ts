@@ -5,6 +5,7 @@ import { AIR, gas } from '../gas'
 import { nextStopDepth } from './ascent'
 import type { Breathing } from './breathing'
 import { planDive, timeToSurface, type PlanInput } from './plan'
+import { replaySegments } from './profile'
 import { surfaceInterval } from './tissues'
 
 const oc = (fo2: number, fhe = 0): Breathing => ({
@@ -323,12 +324,13 @@ describe('timeToSurface', () => {
 			gfHigh: 0.85,
 			roundStops: false,
 		})
-		const bottom = p.segments[1]
-		expect(bottom.kind).toBe('level')
-		void bottom
-		expect(
-			timeToSurface(p.endTissues, 0, AIR_OC, { gfLow: 0.4, gfHigh: 0.85 }),
-		).toBe(0)
+		const bottomTissues = replaySegments(p.segments.slice(0, 2)).at(-1)!
+		const rules = { gfLow: 0.4, gfHigh: 0.85, roundStops: false }
+		expect(timeToSurface(bottomTissues, 40, AIR_OC, rules)).toBeCloseTo(
+			p.runtimeMinutes - p.segments[1].runtimeMinutes,
+			9,
+		)
+		expect(timeToSurface(p.endTissues, 0, AIR_OC, rules)).toBe(0)
 	})
 })
 

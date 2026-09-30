@@ -75,6 +75,11 @@ export interface DivePlan {
 	readonly segments: PlannedSegment[]
 	readonly stops: DecoStop[]
 	readonly runtimeMinutes: number
+	/**
+	 * Depth where GF-low anchors (the first depth whose GF-low ceiling blocked
+	 * the ascent); a stop may take zero time there once GF is interpolated.
+	 * Null for no-decompression dives.
+	 */
 	readonly firstStopM: number | null
 	readonly endTissues: Tissues
 	readonly oxygen: { cnsPercent: number; otu: number }
@@ -337,7 +342,10 @@ export function planDive(input: PlanInput): DivePlan {
 
 /**
  * Time to surface from a tissue state, minutes, using the plan's ascent
- * rules. @example timeToSurface(tissues, 30, { kind: 'oc', gas: AIR }, { gfLow: 0.4, gfHigh: 0.85 })
+ * rules. Starts the runtime at 0, so with `roundStops` the whole-minute
+ * boundaries (and the result, by < 1 min) can differ from a plan that reaches
+ * this state at a non-integer runtime.
+ * @example timeToSurface(tissues, 30, { kind: 'oc', gas: AIR }, { gfLow: 0.4, gfHigh: 0.85 })
  */
 export function timeToSurface(
 	tissues: Tissues,
