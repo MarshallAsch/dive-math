@@ -62,6 +62,18 @@ describe('parseShearwaterCsv', () => {
 				].join('\n'),
 			),
 		).toThrow(/fields/))
+	it('rejects rows with too few fields', () =>
+		expect(() =>
+			parseShearwaterCsv(
+				[
+					SUMMARY_HEAD,
+					summaryRow('3.9'),
+					SAMPLE_HEAD,
+					sample,
+					'0,0,0,0,0.21',
+				].join('\n'),
+			),
+		).toThrow(/not a number/))
 })
 
 // Self-consistency: a synthetic "log" whose logged values come from our own
@@ -93,6 +105,35 @@ describe('replay harness (synthetic log)', () => {
 		const cmp = replayShearwater(dive)
 		expect(cmp.length).toBe(rows.length - 1)
 		expect(cmp.some((c) => c.ours.firstStopDepthM > 0)).toBe(true)
+
+		// Round trip: write our own values into the logged columns.
+		const build = (tts?: { index: number; delta: number }) =>
+			parseShearwaterCsv(
+				[
+					SUMMARY_HEAD,
+					summaryRow('3.9'),
+					SAMPLE_HEAD,
+					rows[0],
+					...rows.slice(1).map((row, i) => {
+						const f = row.split(',')
+						const o = cmp[i].ours
+						f[2] = String(o.firstStopDepthM)
+						f[3] = String(o.ttsMin + (tts?.index === i ? tts.delta : 0))
+						f[7] = String(o.firstStopMin)
+						f[8] = String(o.ndlMin)
+						return f.join(',')
+					}),
+				].join('\n'),
+			)
+		const again = replayShearwater(build())
+		expect(again.every((c) => c.withinTolerance)).toBe(true)
+
+		// Perturb one in-deco sample's TTS beyond tolerance.
+		const idx = cmp.findIndex((c) => c.ours.firstStopDepthM > 0)
+		const bad = replayShearwater(build({ index: idx, delta: 5 }))
+		expect(
+			bad.map((c, i) => (c.withinTolerance ? -1 : i)).filter((i) => i >= 0),
+		).toEqual([idx])
 	})
 })
 

@@ -61,7 +61,8 @@ export function splitCsvLine(line: string): string[] {
 
 // Number with either '.' or ',' as the decimal separator.
 function num(field: string | undefined, name: string): number {
-	const v = Number((field ?? '').replace(',', '.'))
+	const text = (field ?? '').trim()
+	const v = text === '' ? NaN : Number(text.replace(',', '.'))
 	if (!Number.isFinite(v))
 		throw new Error(`Shearwater CSV: ${name} is not a number (${field})`)
 	return v
