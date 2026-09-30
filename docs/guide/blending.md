@@ -72,8 +72,8 @@ The library cites no external source for these. `topUp` uses mole balances on ab
 
 <!-- prettier-ignore -->
 ```ts example
-import { AIR, gas } from '@marshallasch/dive-math/gas'
-import { partialPressureBlend, topUp, nitroxStickFlowRate } from '@marshallasch/dive-math/blending'
+import { AIR, gas } from 'dive-math/gas'
+import { partialPressureBlend, topUp, nitroxStickFlowRate } from 'dive-math/blending'
 const r = partialPressureBlend({ startBar: 0, startGas: AIR, finalBar: 200, targetGas: gas(0.18, 0.45) })
 r.pHe // => 90
 r.pO2 // => 16.45

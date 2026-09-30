@@ -53,7 +53,7 @@ The library cites no published source for these. They are standard consumption a
 
 <!-- prettier-ignore -->
 ```ts example
-import { sac, rockBottom, turnPressures, bailoutMinutes } from '@marshallasch/dive-math/planning'
+import { sac, rockBottom, turnPressures, bailoutMinutes } from 'dive-math/planning'
 sac(1800, 20, 30) // => 20
 rockBottom({ rmvLpm: 20, depthM: 30, ascentRateMpm: 9, stops: [{ depthM: 5, minutes: 3 }], stressFactor: 2, teamSize: 2 }) // => 1026.67
 turnPressures({ capA: 11.1, capB: 12.9, fillABar: 200, fillBBar: 200, reserveBar: 50 }).thirdsB // => 57.36

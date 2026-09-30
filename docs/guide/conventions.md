@@ -45,8 +45,8 @@ Every function that can use real-gas behaviour takes `useRealGas?: boolean` insi
 `false`. The compressibility factor Z is always evaluated at absolute pressure (see [Real gas](./real-gas)).
 
 ```ts example
-import { toBar, fromMeters } from '@marshallasch/dive-math/units'
-import { ataAtDepth, gaugeToAbs } from '@marshallasch/dive-math/pressure'
+import { toBar, fromMeters } from 'dive-math/units'
+import { ataAtDepth, gaugeToAbs } from 'dive-math/pressure'
 
 toBar(3000, 'psi') // => 206.84
 fromMeters(30, 'ft') // => 98.43

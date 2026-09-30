@@ -11,8 +11,8 @@
 		"skipLibCheck": true,
 		"types": ["node"],
 		"paths": {
-			"@marshallasch/dive-math": ["./src/index.ts"],
-			"@marshallasch/dive-math/*": ["./src/*"]
+			"dive-math": ["./src/index.ts"],
+			"dive-math/*": ["./src/*"]
 		}
 	},
 	"include": ["src", "test", "scripts", "*.ts"]

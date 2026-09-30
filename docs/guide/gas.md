@@ -51,7 +51,7 @@ A negative MOD means the mix is not breathable even at the surface, because $pO_
 
 <!-- prettier-ignore -->
 ```ts example
-import { AIR, gas, mod, end, ead, bestMix } from '@marshallasch/dive-math/gas'
+import { AIR, gas, mod, end, ead, bestMix } from 'dive-math/gas'
 mod(gas(0.32), 1.4) // => 33.75
 end(gas(0.18, 0.45), 60, { model: 'n2-only' }) // => 22.74
 ead(gas(0.32), 30) // => 24.39

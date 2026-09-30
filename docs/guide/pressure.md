@@ -41,7 +41,7 @@ Fill math is different. A cylinder gauge reads pressure above the atmosphere, an
 
 <!-- prettier-ignore -->
 ```ts example
-import { ataAtDepth, depthAtAta } from '@marshallasch/dive-math/pressure'
+import { ataAtDepth, depthAtAta } from 'dive-math/pressure'
 ataAtDepth(30) // => 4
 depthAtAta(2.5, { water: 'fresh' }) // => 15.45
 ```

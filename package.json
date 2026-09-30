@@ -1,5 +1,5 @@
 {
-	"name": "@marshallasch/dive-math",
+	"name": "dive-math",
 	"version": "0.1.0",
 	"description": "Scuba diving math: gas laws, MOD/END, blending, fills, oxygen exposure, gas planning and CCR loop math.",
 	"license": "MIT",

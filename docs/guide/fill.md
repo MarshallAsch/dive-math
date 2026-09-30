@@ -63,7 +63,7 @@ The library cites no external source for the cascade and booster models beyond t
 
 <!-- prettier-ignore -->
 ```ts example
-import { cascade, settledPressure, booster } from '@marshallasch/dive-math/fill'
+import { cascade, settledPressure, booster } from 'dive-math/fill'
 cascade({ banks: [{ volume: 50, pressure: 300 }], target: { volume: 11.1, startPressure: 0 } }).finalPressure // => 245.5
 settledPressure(230, 40, 20) // => 215.25
 booster({ ratio: 40, driveP: 8, supplyVol: 50, supplyStart: 150, receiverVol: 11.1, receiverStart: 0, target: 200 }).maxOutput // => 320
