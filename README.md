@@ -52,6 +52,7 @@ Import from the package root for everything, or from a subpath to keep bundles s
 | oxygen    | `dive-math/oxygen`    | CNS and OTU oxygen exposure                               |
 | planning  | `dive-math/planning`  | SAC/RMV, rock bottom, turn pressures, tank matching       |
 | ccr       | `dive-math/ccr`       | Loop ppO₂ and inert fractions, SCR, O₂ cell checks        |
+| deco      | `dive-math/deco`      | Bühlmann ZH-L16C + GF planner, CCR, bailout, repeat dives |
 
 ## Documentation
 
