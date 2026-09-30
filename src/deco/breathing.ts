@@ -25,7 +25,7 @@ export type Breathing =
 	| { readonly kind: 'oc'; readonly gas: Gas }
 	| { readonly kind: 'ccr'; readonly diluent: Gas; readonly setpoint: Setpoint }
 
-/** Validate a breathing mode; throws RangeError. */
+/** Validate a breathing mode; throws RangeError. @example assertBreathing({ kind: 'oc', gas: AIR }) // ok */
 export function assertBreathing(b: Breathing, name = 'breathing'): void {
 	if (b.kind === 'oc') return assertGas(b.gas, `${name}.gas`)
 	if (b.kind !== 'ccr') {

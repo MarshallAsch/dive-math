@@ -58,8 +58,9 @@ export interface AscentResult {
 	truncated: boolean
 }
 
-/** Longest total stop time planned before giving up, min. */
+/** Longest total stop time planned before giving up, min (24 h: beyond any practical schedule; bounds the search). */
 export const MAX_DECO_MINUTES = 24 * 60
+// Float tolerance for depth-grid and ppO₂ comparisons (well below any meaningful m or ata).
 const EPS = 1e-9
 
 /** Next depth on the stop grid above `d`, m; 0 after the last stop. @example nextStopDepth(12, 3, 3) // 9 */

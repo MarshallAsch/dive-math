@@ -60,7 +60,7 @@ export function initialTissues(opts?: TissueOptions): Tissues {
 	return freeze(Array(16).fill(pn2), Array(16).fill(0))
 }
 
-/** Inspired (alveolar) inert partial pressures at a depth, bar. */
+/** Inspired (alveolar) inert partial pressures at a depth, bar. @example inspiredInert({ kind: 'oc', gas: AIR }, 30).n2 // ≈ 3.114 */
 export function inspiredInert(
 	b: Breathing,
 	depthM: number,

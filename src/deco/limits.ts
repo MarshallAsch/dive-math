@@ -9,7 +9,7 @@ import type { Breathing } from './breathing'
 import { atConstantDepth, type TissueOptions, type Tissues } from './tissues'
 import { ZHL16C } from './zhl16'
 
-/** Throw unless 0 < gf ≤ 1. */
+/** Throw unless 0 < gf ≤ 1. @example assertGf('gfLow', 0.3) // ok; assertGf('gfLow', 0) throws */
 export function assertGf(name: string, gf: number): void {
 	assertFinite(name, gf)
 	if (gf <= 0 || gf > 1)
@@ -66,14 +66,14 @@ export function gfAt(
 	return gfHigh - ((gfHigh - gfLow) * d) / firstStopM
 }
 
-/** Cap on {@link ndl}, minutes. */
+/** Cap on {@link ndl}, minutes (the 3-digit display limit of common dive computers). */
 export const NDL_MAX_MINUTES = 999
 
 /**
  * No-decompression limit: minutes left at the current depth on the current
  * breathing before the GF-high ceiling rises above the surface (ascent time
  * not included; capped at {@link NDL_MAX_MINUTES}; 0 when already in deco).
- * @example ndl(initialTissues(), 30, { kind: 'oc', gas: AIR }, { gfHigh: 1 }) // ≈ 16.9
+ * @example ndl(initialTissues(), 30, { kind: 'oc', gas: AIR }, { gfHigh: 1 }) // ≈ 16.28
  */
 export function ndl(
 	tissues: Tissues,

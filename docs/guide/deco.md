@@ -91,7 +91,7 @@ Plans never throw for unsafe-but-valid dives; they return `warnings`:
 - `density-recommended` / `density-hard`: above 5.2 / 6.3 g/L;
 - `ceiling-violated`: a multi-level ascent above the GF-high ceiling;
 - `no-breathable-gas`: no gas within the ppO₂ limits at a stop depth;
-- `deco-too-long`: more than 24 h of stops (the plan is truncated).
+- `deco-too-long`: more than 24 h of stops. The plan is truncated: it stops at the depth where it was truncated, and `runtimeMinutes` and `gasUse` cover only the planned part.
 
 ## Examples
 

@@ -27,6 +27,10 @@ export type PlanWarning =
 			readonly segmentIndex: number
 	  }
 	| { readonly code: 'no-breathable-gas'; readonly depthM: number }
+	/**
+	 * Stops exceed MAX_DECO_MINUTES: the plan stops at the depth where it was
+	 * truncated; `runtimeMinutes` and `gasUse` cover only the planned part.
+	 */
 	| { readonly code: 'deco-too-long' }
 
 /** Limits used by {@link segmentWarnings}. */

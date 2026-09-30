@@ -70,7 +70,11 @@ export interface PlanInput extends TissueOptions {
 	consumption?: Consumption
 }
 
-/** A complete plan. */
+/**
+ * A complete plan. When truncated (`deco-too-long`) the plan stops at the
+ * depth where it was truncated; `runtimeMinutes` and `gasUse` cover only the
+ * planned part.
+ */
 export interface DivePlan {
 	readonly segments: PlannedSegment[]
 	readonly stops: DecoStop[]
@@ -102,6 +106,8 @@ export interface ResolvedPlanInput extends AscentRules {
  * @example resolvePlanInput({ levels, gfLow: 0.4, gfHigh: 0.85 }).ascentRate // 10
  */
 export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
+	// Common planner defaults (Shearwater ascent 10 m/min, 3 m stop grid,
+	// deco ppO₂ 1.6 / bottom 1.4 ata).
 	const r: ResolvedPlanInput = {
 		...input,
 		decoGases: input.decoGases ?? [],
@@ -260,6 +266,7 @@ export function finishPlan(
 	}
 }
 
+// Conventional recreational safety stop: 3 min at 5 m.
 const SAFETY_STOP_M = 5
 const SAFETY_STOP_MIN = 3
 
