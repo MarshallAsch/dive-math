@@ -6,8 +6,8 @@ const src = fileURLToPath(new URL('./src', import.meta.url))
 export default defineConfig({
 	resolve: {
 		alias: [
-			{ find: /^@marshallasch\/dive-math$/, replacement: `${src}/index.ts` },
-			{ find: /^@marshallasch\/dive-math\/(.*)$/, replacement: `${src}/$1` },
+			{ find: /^dive-math$/, replacement: `${src}/index.ts` },
+			{ find: /^dive-math\/(.*)$/, replacement: `${src}/$1` },
 		],
 	},
 	test: {

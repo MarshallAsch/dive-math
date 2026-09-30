@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import * as dm from '@marshallasch/dive-math'
+import * as dm from 'dive-math'
 
 const AIR = dm.AIR
 const bad = [NaN, Infinity, -Infinity]

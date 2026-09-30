@@ -36,7 +36,7 @@ $$T_F = \tfrac95 T_C + 32$$
 
 <!-- prettier-ignore -->
 ```ts example
-import { psiToBar, cuftToLitres, toLpm } from '@marshallasch/dive-math/units'
+import { psiToBar, cuftToLitres, toLpm } from 'dive-math/units'
 psiToBar(3000) // => 206.84
 cuftToLitres(80) // => 2265.35
 toLpm(1.5, 'cfm') // => 42.48

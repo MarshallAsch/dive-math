@@ -59,7 +59,7 @@ $$CNS(t) = CNS_0 \cdot 0.5^{\,t/90}$$
 
 <!-- prettier-ignore -->
 ```ts example
-import { cnsLimitMinutes, segmentOtu, dailyExposure } from '@marshallasch/dive-math/oxygen'
+import { cnsLimitMinutes, segmentOtu, dailyExposure } from 'dive-math/oxygen'
 cnsLimitMinutes(1.4) // => 150
 segmentOtu({ ppo2: 1.4, minutes: 30 }) // => 48.86
 dailyExposure([{ type: 'dive', ppo2: 1.4, minutes: 30 }, { type: 'surface', minutes: 90 }]).endCnsPercent // => 10

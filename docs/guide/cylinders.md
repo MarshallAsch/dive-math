@@ -103,7 +103,7 @@ Each row carries its own `source`. By group:
 
 <!-- prettier-ignore -->
 ```ts example
-import { CYLINDERS_BY_ID, freeGas, tankFactor } from '@marshallasch/dive-math/cylinders'
+import { CYLINDERS_BY_ID, freeGas, tankFactor } from 'dive-math/cylinders'
 CYLINDERS_BY_ID.AL80.volumeL // => 11.1
 freeGas({ volumeL: 10, pressureBar: 200, useRealGas: true }) // => 1928.6
 tankFactor(11.1) // => 2.70

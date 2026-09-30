@@ -1,4 +1,6 @@
-# @marshallasch/dive-math
+# dive-math
+
+Previously published as `@marshallasch/dive-math` (0.1.0); the package is now unscoped.
 
 ## 0.1.0
 

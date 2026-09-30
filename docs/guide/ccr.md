@@ -65,8 +65,8 @@ Deviation of the measured pure-O₂ reading from that theoretical value sets the
 
 <!-- prettier-ignore -->
 ```ts example
-import { AIR, gas } from '@marshallasch/dive-math/gas'
-import { effectivePpo2, loopInertFractions, hypoxicFloor, scrLoopFo2, classifyO2Cell } from '@marshallasch/dive-math/ccr'
+import { AIR, gas } from 'dive-math/gas'
+import { effectivePpo2, loopInertFractions, hypoxicFloor, scrLoopFo2, classifyO2Cell } from 'dive-math/ccr'
 effectivePpo2({ setpoint: 1.3, diluent: AIR, depthM: 2 }) // => 1.2
 loopInertFractions({ setpoint: 1.3, diluent: gas(0.18, 0.45), depthM: 30 }).fhe // => 0.3704
 hypoxicFloor(gas(0.1, 0.7)) // => 6

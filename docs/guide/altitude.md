@@ -25,8 +25,8 @@ $$d_{TOD} = d \cdot \frac{P_0}{P(h)}$$
 `surfaceAtaAtAltitude` returns the surface pressure relative to sea level (1.0 at 0 m). Pass it as `surfacePressure` to any depth function:
 
 ```ts
-import { surfaceAtaAtAltitude } from '@marshallasch/dive-math/altitude'
-import { mod, gas } from '@marshallasch/dive-math/gas'
+import { surfaceAtaAtAltitude } from 'dive-math/altitude'
+import { mod, gas } from 'dive-math/gas'
 
 mod(gas(0.32), 1.4, { surfacePressure: surfaceAtaAtAltitude(1500) })
 ```
@@ -46,8 +46,8 @@ mod(gas(0.32), 1.4, { surfacePressure: surfaceAtaAtAltitude(1500) })
 
 <!-- prettier-ignore -->
 ```ts example
-import { surfacePressureAtAltitude, surfaceAtaAtAltitude, theoreticalOceanDepth } from '@marshallasch/dive-math/altitude'
-import { ataAtDepth } from '@marshallasch/dive-math/pressure'
+import { surfacePressureAtAltitude, surfaceAtaAtAltitude, theoreticalOceanDepth } from 'dive-math/altitude'
+import { ataAtDepth } from 'dive-math/pressure'
 surfacePressureAtAltitude(1000) // => 0.899
 ataAtDepth(10, { surfacePressure: surfaceAtaAtAltitude(1000) }) // => 1.887
 theoreticalOceanDepth(30, 1000) // => 33.82

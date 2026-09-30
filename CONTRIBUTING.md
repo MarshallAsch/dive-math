@@ -23,7 +23,7 @@ Fenced blocks tagged `ts example` in `docs/guide/*.md` are extracted into Vitest
 - A line `expr // => 33.75` becomes `expect(expr).toBeCloseTo(33.75, 2)` (decimals = digits shown).
 - `expr // => true` / `false` becomes `expect(expr).toBe(...)`.
 - Assertion lines must be expressions, not declarations (`const x = f() // => 1` will not work).
-- Imports are hoisted and merged; use the public `@marshallasch/dive-math/...` specifiers.
+- Imports are hoisted and merged; use the public `dive-math/...` specifiers.
 
 ## Changesets
 
@@ -51,7 +51,7 @@ The workflows only run in `MarshallAsch/dive-math` (forks skip docs and release)
    npm publish --access public
    ```
 
-7. **Trusted publisher:** on npmjs.com, package settings → Trusted publishing → GitHub Actions, repository `MarshallAsch/dive-math`, workflow `release.yml`. Do this before merging any `chore: release` PR; later releases then publish from CI with provenance and no stored token.
+7. **Trusted publisher:** on npmjs.com, package settings → Trusted publishing → GitHub Actions, repository `MarshallAsch/dive-math`, workflow `release.yaml`. Do this before merging any `chore: release` PR; later releases then publish from CI with provenance and no stored token.
 
 ## Releasing
 

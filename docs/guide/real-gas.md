@@ -46,8 +46,8 @@ $$P_{ideal} = P\,\frac{Z(P_{atm})}{Z(P)}$$
 
 <!-- prettier-ignore -->
 ```ts example
-import { AIR, gas } from '@marshallasch/dive-math/gas'
-import { mixZ, idealEquivalentPressure } from '@marshallasch/dive-math/real-gas'
+import { AIR, gas } from 'dive-math/gas'
+import { mixZ, idealEquivalentPressure } from 'dive-math/real-gas'
 mixZ(AIR, 207) // => 1.0402
 mixZ(gas(1), 207) // => 0.9588
 idealEquivalentPressure(gas(0.25, 0.25), 200) // => 192.05

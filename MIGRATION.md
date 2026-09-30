@@ -1,6 +1,6 @@
 # Migration guide
 
-How to move the app-local dive math onto `@marshallasch/dive-math`. Each row is old symbol, new symbol, and any
+How to move the app-local dive math onto `dive-math`. Each row is old symbol, new symbol, and any
 behaviour change. Unless noted, the new function throws (`RangeError`/`TypeError`) on invalid input instead of
 returning `null`, `NaN` or `Infinity`, and returns unrounded numbers. Gas mixes are `Gas` objects (`gas(fo2, fhe)`),
 fractions rather than percentages. Pressure is gauge bar unless a name says absolute.

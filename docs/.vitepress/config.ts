@@ -42,7 +42,7 @@ export default defineConfig({
 			{ text: 'API', link: '/api/' },
 			{
 				text: 'npm',
-				link: 'https://www.npmjs.com/package/@marshallasch/dive-math',
+				link: 'https://www.npmjs.com/package/dive-math',
 			},
 		],
 		sidebar: {

@@ -35,8 +35,8 @@ Limits used by the library:
 
 <!-- prettier-ignore -->
 ```ts example
-import { AIR } from '@marshallasch/dive-math/gas'
-import { densityAtDepth, depthForDensity } from '@marshallasch/dive-math/density'
+import { AIR } from 'dive-math/gas'
+import { densityAtDepth, depthForDensity } from 'dive-math/density'
 densityAtDepth(AIR, 30) // => 5.15
 depthForDensity(AIR, 5.2) // => 30.38
 ```

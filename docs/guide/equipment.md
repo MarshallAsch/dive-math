@@ -70,7 +70,7 @@ Reference data for fill-station and dive tools: gas booster presets you can feed
 
 <!-- prettier-ignore -->
 ```ts example
-import { BOOSTERS, COMMON_MIXES } from '@marshallasch/dive-math/equipment'
+import { BOOSTERS, COMMON_MIXES } from 'dive-math/equipment'
 BOOSTERS.length > 0 // => true
 COMMON_MIXES[0].gas.fo2 // => 0.209
 ```
