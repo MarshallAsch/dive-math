@@ -145,6 +145,11 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
 	) {
 		throw new RangeError('startTissues must have 16 compartments')
 	}
+	if (r.startTissues) {
+		const { n2, he } = r.startTissues
+		n2.forEach((v, i) => assertNonNegative(`startTissues.n2[${i}]`, v))
+		he.forEach((v, i) => assertNonNegative(`startTissues.he[${i}]`, v))
+	}
 	if (r.consumption) {
 		assertPositive('consumption.rmvLpm', r.consumption.rmvLpm)
 		if (r.consumption.decoRmvLpm !== undefined)

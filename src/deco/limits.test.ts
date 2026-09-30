@@ -28,6 +28,14 @@ describe('toleratedAmbient', () => {
 			1.790727 - 1e-6,
 		)
 	})
+	it('skips a compartment with no dissolved gas', () => {
+		const t = { n2: [...loaded.n2], he: [...loaded.he] }
+		t.n2[0] = 0
+		t.he[0] = 0
+		const v = toleratedAmbient(t, 0.3)
+		expect(Number.isFinite(v)).toBe(true)
+		expect(toleratedAmbient({ n2: t.n2.map(() => 0), he: t.he }, 0.3)).toBe(0)
+	})
 	it('is below the surface for saturated surface tissues', () =>
 		expect(toleratedAmbient(initialTissues(), 1)).toBeLessThan(1))
 	it('never gets deeper as GF rises (property)', () => {

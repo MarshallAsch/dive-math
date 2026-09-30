@@ -326,6 +326,20 @@ describe('input validation', () => {
 	])('%s throws RangeError', (_n, input) =>
 		expect(() => planDive(input as PlanInput)).toThrow(RangeError),
 	)
+	it.each([
+		['n2', 3, NaN],
+		['n2', 0, -0.1],
+		['he', 15, Infinity],
+	] as const)('rejects startTissues.%s[%i] = %s', (key, i, v) => {
+		const t = {
+			n2: Array<number>(16).fill(0.75),
+			he: Array<number>(16).fill(0),
+		}
+		t[key][i] = v
+		expect(() => planDive({ ...ok, startTissues: t })).toThrow(
+			new RegExp(`startTissues\\.${key}\\[${i}\\]`),
+		)
+	})
 })
 
 describe('timeToSurface', () => {

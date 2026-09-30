@@ -30,6 +30,8 @@ export function toleratedAmbient(tissues: Tissues, gf: number): number {
 		const pn2 = tissues.n2[i]
 		const phe = tissues.he[i]
 		const p = pn2 + phe
+		// No dissolved gas: this compartment tolerates any ambient pressure.
+		if (p === 0) continue
 		const a = (c.n2A * pn2 + c.heA * phe) / p
 		const b = (c.n2B * pn2 + c.heB * phe) / p
 		worst = Math.max(worst, (p - gf * a) / (gf / b - gf + 1))
