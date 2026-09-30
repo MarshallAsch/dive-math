@@ -80,7 +80,7 @@ Surface tissues start saturated at $(P_{surf} - P_{H_2O}) \times 0.7902$ (N₂ +
 
 - With `surfacePressure: 1.01325`, 6 m is 1.613 ata, so O₂ is not selected at 6 m unless `maxDecoPpo2` ≥ ~1.62.
 - `ndl()` excludes off-gassing during the ascent, so it is stricter than the planner's direct-ascent no-stop check.
-- CCR diluent flush: when the setpoint is below the diluent's ppO₂, the loop's ppO₂ is the diluent's, taken as $f_{O_2} \cdot P_{amb}$; the model's inert pressure is then $f_{O_2} \cdot P_{H_2O}$ (< 0.5 %) lower than breathing the diluent on open circuit.
+- CCR diluent flush: when the setpoint is below the diluent's ppO₂, the loop's ppO₂ is the diluent's, taken as $f_{O_2} \cdot P_{amb}$; the model's inert pressure is then $f_{O_2} \cdot P_{H_2O}$ lower than breathing the diluent on open circuit: about 0.013 bar for air (≈ 0.5 % of the inert pressure where the flush starts), rising with the diluent's O₂ (≈ 1.4 % for EAN32, ≈ 4.7 % for a 50 % diluent at a 0.7 setpoint). This makes the model slightly less conservative in that regime.
 
 ## CCR bailout
 
