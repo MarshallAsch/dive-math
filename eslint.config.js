@@ -15,6 +15,12 @@ export default tseslint.config(
 	js.configs.recommended,
 	...tseslint.configs.strict,
 	{
+		files: ['scripts/**/*.mjs'],
+		languageOptions: {
+			globals: { URL: 'readonly', console: 'readonly', process: 'readonly' },
+		},
+	},
+	{
 		files: ['**/*.test.ts', 'test/**'],
 		rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
 	},
