@@ -78,6 +78,10 @@ Surface tissues start saturated at $(P_{surf} - P_{H_2O}) \times 0.7902$ (N₂ +
 
 `Level.minutes` is the time **at** depth, after the descent or ascent to it.
 
+## CCR bailout
+
+`bailoutPlan` evaluates a bailout at the end of every level below the surface and returns the worst bailout point among the ends of the levels (largest bailout gas requirement; ties go to the longer runtime). For each candidate it replays the bottom to that level's end, then ascends on open circuit on `bailoutGases` with gas switches at MOD. `bailoutDepthM` and `bailoutRuntimeMinutes` report where and when the chosen bailout starts.
+
 ## Warnings
 
 Plans never throw for unsafe-but-valid dives; they return `warnings`:
