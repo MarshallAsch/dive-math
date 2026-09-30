@@ -186,17 +186,20 @@ export function ascend(
 			if (first === null) first = d
 			let waitSec = 0
 			if (!clearAfter(0)) {
+				// Double the wait up to MAX_DECO_MINUTES (tested last, clamped);
+				// truncate only if even that does not clear.
+				const maxSec = MAX_DECO_MINUTES * 60
 				let lo = 0
 				let hi = 1
 				while (!clearAfter(hi / 60)) {
+					if (hi >= maxSec) {
+						truncated = true
+						break
+					}
 					lo = hi
-					hi *= 2
-					if (hi / 60 > MAX_DECO_MINUTES) break
+					hi = Math.min(hi * 2, maxSec)
 				}
-				if (hi / 60 > MAX_DECO_MINUTES) {
-					truncated = true
-					break
-				}
+				if (truncated) break
 				while (hi - lo > 1) {
 					const mid = Math.floor((lo + hi) / 2)
 					if (clearAfter(mid / 60)) hi = mid

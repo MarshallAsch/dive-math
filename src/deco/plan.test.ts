@@ -280,6 +280,18 @@ describe('warnings', () => {
 		})
 		expect(p.warnings).toContainEqual({ code: 'deco-too-long' })
 	})
+	// The 3 m stop here needs ~1199 min: past the last power-of-two probe
+	// (65536 s ≈ 1092 min) but within MAX_DECO_MINUTES, so it must be planned.
+	it('plans a single stop between 1092 and 1440 min without truncating', () => {
+		const p = planDive({
+			levels: [{ depthM: 9, minutes: 1200, breathing: AIR_OC }],
+			gfLow: 0.2,
+			gfHigh: 0.2,
+		})
+		expect(p.warnings).not.toContainEqual({ code: 'deco-too-long' })
+		expect(Math.max(...p.stops.map((s) => s.minutes))).toBeGreaterThan(1092)
+		expect(p.segments.at(-1)?.toDepthM).toBe(0)
+	})
 })
 
 describe('input validation', () => {
