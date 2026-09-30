@@ -132,6 +132,53 @@ const cases: [string, (v: number) => unknown][] = [
 		(v) => dm.effectivePpo2({ setpoint: v, diluent: AIR, depthM: 30 }),
 	],
 	[
+		'planDive',
+		(v) =>
+			dm.planDive({
+				levels: [
+					{ depthM: v, minutes: 20, breathing: { kind: 'oc', gas: AIR } },
+				],
+				gfLow: 0.4,
+				gfHigh: 0.85,
+			}),
+	],
+	[
+		'loadSegment',
+		(v) =>
+			dm.loadSegment(dm.initialTissues(), {
+				fromDepthM: 0,
+				toDepthM: 30,
+				minutes: v,
+				breathing: { kind: 'oc', gas: AIR },
+			}),
+	],
+	['toleratedAmbient', (v) => dm.toleratedAmbient(dm.initialTissues(), v)],
+	['gfAt', (v) => dm.gfAt(v, 18, 0.3, 0.8)],
+	[
+		'ndl',
+		(v) =>
+			dm.ndl(dm.initialTissues(), 30, { kind: 'oc', gas: AIR }, { gfHigh: v }),
+	],
+	['surfaceInterval', (v) => dm.surfaceInterval(dm.initialTissues(), v)],
+	[
+		'bailoutPlan',
+		(v) =>
+			dm.bailoutPlan(
+				{
+					levels: [
+						{
+							depthM: 40,
+							minutes: 20,
+							breathing: { kind: 'ccr', diluent: AIR, setpoint: 1.3 },
+						},
+					],
+					gfLow: 0.4,
+					gfHigh: 0.85,
+				},
+				{ bailoutGases: [AIR], rmvLpm: v },
+			),
+	],
+	[
 		'scrLoopFo2',
 		(v) => dm.scrLoopFo2({ supplyFo2: 0.5, supplyRateLpm: v, vo2Lpm: 1 }),
 	],

@@ -12,6 +12,7 @@ const tables: [string, readonly unknown[]][] = [
 	['COMMON_MIXES', dm.COMMON_MIXES],
 	['COMMON_MIXES gases', dm.COMMON_MIXES.map((m) => m.gas)],
 	['CNS_TABLE', dm.CNS_TABLE],
+	['ZHL16C', dm.ZHL16C],
 	['VIRIAL_COEFFICIENTS', Object.values(dm.VIRIAL_COEFFICIENTS)],
 	['O2_SENSOR_BRANDS', [dm.O2_SENSOR_BRANDS]],
 	[
@@ -36,6 +37,7 @@ describe('reference tables are deeply frozen', () => {
 			dm.BOOSTERS,
 			dm.COMMON_MIXES,
 			dm.CNS_TABLE,
+			dm.ZHL16C,
 			dm.VIRIAL_COEFFICIENTS,
 			dm.O2_SENSOR_BRANDS,
 			dm.O2_AMBIENT_RANGE,

@@ -16,6 +16,7 @@ export default defineConfig({
 		oxygen: 'src/oxygen.ts',
 		planning: 'src/planning/index.ts',
 		ccr: 'src/ccr/index.ts',
+		deco: 'src/deco/index.ts',
 	},
 	format: 'esm',
 	platform: 'neutral',

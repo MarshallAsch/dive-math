@@ -17,6 +17,8 @@
 		"blending",
 		"rebreather",
 		"ccr",
+		"decompression",
+		"buhlmann",
 		"mod",
 		"end"
 	],
@@ -90,6 +92,10 @@
 		"./ccr": {
 			"types": "./dist/ccr.d.ts",
 			"import": "./dist/ccr.js"
+		},
+		"./deco": {
+			"types": "./dist/deco.d.ts",
+			"import": "./dist/deco.js"
 		},
 		"./package.json": "./package.json"
 	},
