@@ -42,10 +42,16 @@ export function topUp(input: TopUpInput): TopUpResult {
 
 	const startAbs = startBar + ATM_BAR
 	const finalAbs = finalBar + ATM_BAR
-	const blend = (r: number): Gas => ({
-		fo2: r * startGas.fo2 + (1 - r) * topGas.fo2,
-		fhe: r * startGas.fhe + (1 - r) * topGas.fhe,
-	})
+	// r is the start gas's share of the final moles. Adding gas can only
+	// lower it, but the real-gas fixed point can overshoot past 1 by float
+	// error when finalBar ≈ startBar, so keep the blend convex.
+	const blend = (share: number): Gas => {
+		const r = Math.min(1, Math.max(0, share))
+		return {
+			fo2: r * startGas.fo2 + (1 - r) * topGas.fo2,
+			fhe: r * startGas.fhe + (1 - r) * topGas.fhe,
+		}
+	}
 
 	let mix = blend(startAbs / finalAbs)
 	if (input.useRealGas) {

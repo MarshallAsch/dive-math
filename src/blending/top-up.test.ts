@@ -60,6 +60,20 @@ describe('topUp', () => {
 			6,
 		)
 	})
+	// Found by the property below in CI: with real gas and a near-zero
+	// top-up, the fixed point overshot the start share past 1 and produced
+	// fhe = -5e-324.
+	it('keeps fractions valid for a near-zero real-gas top-up', () => {
+		const r = topUp({
+			startBar: 249.99213444061044,
+			finalBar: 249.99213444061044 + 1.4210854715202004e-14,
+			startGas: gas(0, 0),
+			topGas: gas(0, 1.112536929253601e-308),
+			useRealGas: true,
+		})
+		expect(r.gas.fo2).toBeGreaterThanOrEqual(0)
+		expect(r.gas.fhe).toBeGreaterThanOrEqual(0)
+	})
 	it('fractions stay in [0,1] (property)', () => {
 		const frac = fc.double({ min: 0, max: 1, noNaN: true })
 		fc.assert(
