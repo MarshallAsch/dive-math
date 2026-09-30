@@ -344,6 +344,17 @@ describe('timeToSurface', () => {
 		)
 		expect(timeToSurface(p.endTissues, 0, AIR_OC, rules)).toBe(0)
 	})
+	it('is Infinity when the required stops exceed MAX_DECO_MINUTES', () => {
+		const p = planDive({
+			levels: [{ depthM: 30, minutes: 60, breathing: oc(0.05, 0.9) }],
+			gfLow: 0.05,
+			gfHigh: 0.05,
+		})
+		const bottom = replaySegments(p.segments.slice(0, 2)).at(-1)!
+		expect(
+			timeToSurface(bottom, 30, oc(0.05, 0.9), { gfLow: 0.05, gfHigh: 0.05 }),
+		).toBe(Infinity)
+	})
 })
 
 describe('reports and limits (coverage of edge branches)', () => {

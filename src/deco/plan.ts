@@ -344,7 +344,8 @@ export function planDive(input: PlanInput): DivePlan {
  * Time to surface from a tissue state, minutes, using the plan's ascent
  * rules. Starts the runtime at 0, so with `roundStops` the whole-minute
  * boundaries (and the result, by < 1 min) can differ from a plan that reaches
- * this state at a non-integer runtime.
+ * this state at a non-integer runtime. Infinity when the required stops
+ * exceed MAX_DECO_MINUTES.
  * @example timeToSurface(tissues, 30, { kind: 'oc', gas: AIR }, { gfLow: 0.4, gfHigh: 0.85 })
  */
 export function timeToSurface(
@@ -357,6 +358,6 @@ export function timeToSurface(
 		...input,
 		levels: [{ depthM, minutes: 0, breathing }],
 	})
-	return ascend({ tissues, depthM, runtimeMinutes: 0, breathing }, r)
-		.runtimeMinutes
+	const up = ascend({ tissues, depthM, runtimeMinutes: 0, breathing }, r)
+	return up.truncated ? Infinity : up.runtimeMinutes
 }
