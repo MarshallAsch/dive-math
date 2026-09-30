@@ -41,7 +41,7 @@ The workflows only run in `MarshallAsch/dive-math` (forks skip docs and release)
 2. **GitHub Pages:** Settings → Pages → Source: **GitHub Actions**. The `Docs` workflow then deploys `docs/.vitepress/dist` on every push to `main`, served at <https://marshallasch.github.io/dive-math/> (VitePress `base` is `/dive-math/`).
 3. **Branch protection** on `main`: require the `CI / check` and `CI / test-node-matrix` checks.
 4. **Actions:** Settings → Actions → General → Workflow permissions → allow GitHub Actions to create and approve pull requests (the release workflow opens `chore: release` PRs).
-5. **Renovate:** install the [Renovate GitHub app](https://github.com/apps/renovate) on the repo; it reads `renovate.json` (weekly, grouped dev-dependency and GitHub Actions updates, actions pinned to digests). Dependabot version updates are not used.
+5. **Renovate:** install the [Renovate GitHub app](https://github.com/apps/renovate) on the repo; it reads `.github/renovate.json` (weekly, grouped dev-dependency and GitHub Actions updates, actions pinned to digests). Dependabot version updates are not used.
 6. **First npm publish** (trusted publishing needs the package to exist):
 
    ```sh

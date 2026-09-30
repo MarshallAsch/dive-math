@@ -25,6 +25,11 @@
 			"description": "Keep the supported Node.js range fixed; bump it deliberately",
 			"matchDepTypes": ["engines"],
 			"enabled": false
+		},
+		{
+			"description": "VitePress 1.x peers markdown-it-mathjax3 ^4; v5 breaks npm ci (ERESOLVE)",
+			"matchPackageNames": ["markdown-it-mathjax3"],
+			"allowedVersions": "<5"
 		}
 	]
 }
