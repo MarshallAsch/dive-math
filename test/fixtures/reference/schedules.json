@@ -1,0 +1,218 @@
+{
+ "source": "scripts/deco-reference/reference.py",
+ "cases": [
+  {
+   "name": "air_18m_30min_gf40_85_no_deco",
+   "depthM": 18,
+   "bottomMinutes": 29.1,
+   "bottom": [
+    0.209,
+    0
+   ],
+   "decoGases": [],
+   "gfLow": 0.4,
+   "gfHigh": 0.85,
+   "runtimeMinutes": 31.8,
+   "firstStopM": null,
+   "stops": []
+  },
+  {
+   "name": "air_30m_25min_gf40_85",
+   "depthM": 30,
+   "bottomMinutes": 23.5,
+   "bottom": [
+    0.209,
+    0
+   ],
+   "decoGases": [],
+   "gfLow": 0.4,
+   "gfHigh": 0.85,
+   "runtimeMinutes": 34.983333,
+   "firstStopM": 12,
+   "stops": [
+    [
+     6,
+     118
+    ],
+    [
+     3,
+     301
+    ]
+   ]
+  },
+  {
+   "name": "air_45m_30min_gf30_70",
+   "depthM": 45,
+   "bottomMinutes": 27.75,
+   "bottom": [
+    0.209,
+    0
+   ],
+   "decoGases": [],
+   "gfLow": 0.3,
+   "gfHigh": 0.7,
+   "runtimeMinutes": 121.3,
+   "firstStopM": 21,
+   "stops": [
+    [
+     21,
+     75
+    ],
+    [
+     18,
+     162
+    ],
+    [
+     15,
+     206
+    ],
+    [
+     12,
+     389
+    ],
+    [
+     9,
+     607
+    ],
+    [
+     6,
+     1216
+    ],
+    [
+     3,
+     2553
+    ]
+   ]
+  },
+  {
+   "name": "air_45m_30min_gf100_100",
+   "depthM": 45,
+   "bottomMinutes": 27.75,
+   "bottom": [
+    0.209,
+    0
+   ],
+   "decoGases": [],
+   "gfLow": 1.0,
+   "gfHigh": 1.0,
+   "runtimeMinutes": 69.216667,
+   "firstStopM": 9,
+   "stops": [
+    [
+     9,
+     265
+    ],
+    [
+     6,
+     541
+    ],
+    [
+     3,
+     1277
+    ]
+   ]
+  },
+  {
+   "name": "air_40m_30min_ean50_gf40_85",
+   "depthM": 40,
+   "bottomMinutes": 28,
+   "bottom": [
+    0.209,
+    0
+   ],
+   "decoGases": [
+    [
+     0.5,
+     0
+    ]
+   ],
+   "gfLow": 0.4,
+   "gfHigh": 0.85,
+   "runtimeMinutes": 56.9,
+   "firstStopM": 18,
+   "stops": [
+    [
+     15,
+     13
+    ],
+    [
+     12,
+     117
+    ],
+    [
+     9,
+     191
+    ],
+    [
+     6,
+     322
+    ],
+    [
+     3,
+     731
+    ]
+   ]
+  },
+  {
+   "name": "tx1845_60m_20min_ean50_o2_gf30_80",
+   "depthM": 60,
+   "bottomMinutes": 17,
+   "bottom": [
+    0.18,
+    0.45
+   ],
+   "decoGases": [
+    [
+     0.5,
+     0
+    ],
+    [
+     1.0,
+     0
+    ]
+   ],
+   "gfLow": 0.3,
+   "gfHigh": 0.8,
+   "runtimeMinutes": 54.983333,
+   "firstStopM": 30,
+   "stops": [
+    [
+     27,
+     29
+    ],
+    [
+     24,
+     70
+    ],
+    [
+     21,
+     52
+    ],
+    [
+     18,
+     61
+    ],
+    [
+     15,
+     103
+    ],
+    [
+     12,
+     154
+    ],
+    [
+     9,
+     276
+    ],
+    [
+     6,
+     348
+    ],
+    [
+     3,
+     646
+    ]
+   ]
+  }
+ ]
+}
