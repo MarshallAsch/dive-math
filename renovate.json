@@ -1,0 +1,30 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": [
+		"config:recommended",
+		"helpers:pinGitHubActionDigests",
+		":semanticCommits",
+		":maintainLockFilesWeekly"
+	],
+	"schedule": ["before 6am on monday"],
+	"timezone": "America/Toronto",
+	"rangeStrategy": "pin",
+	"packageRules": [
+		{
+			"description": "Batch non-major dev-dependency updates into one PR",
+			"matchDepTypes": ["devDependencies"],
+			"matchUpdateTypes": ["minor", "patch"],
+			"groupName": "dev dependencies"
+		},
+		{
+			"description": "Batch GitHub Actions updates into one PR",
+			"matchManagers": ["github-actions"],
+			"groupName": "GitHub Actions"
+		},
+		{
+			"description": "Keep the supported Node.js range fixed; bump it deliberately",
+			"matchDepTypes": ["engines"],
+			"enabled": false
+		}
+	]
+}
