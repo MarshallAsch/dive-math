@@ -13,7 +13,8 @@
 		"src/fill/index.ts",
 		"src/oxygen.ts",
 		"src/planning/index.ts",
-		"src/ccr/index.ts"
+		"src/ccr/index.ts",
+		"src/deco/index.ts"
 	],
 	"plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
 	"out": "docs/api",

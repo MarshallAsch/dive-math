@@ -15,5 +15,6 @@
 			"dive-math/*": ["./src/*"]
 		}
 	},
-	"include": ["src", "test", "scripts", "*.ts"]
+	"include": ["src", "test", "scripts", "*.ts"],
+	"exclude": ["scripts/gasplanner/driver.ts"]
 }

@@ -17,6 +17,7 @@ const guides = [
 	['Cylinders', 'cylinders'],
 	['Equipment', 'equipment'],
 	['Rebreathers', 'ccr'],
+	['Decompression', 'deco'],
 ]
 
 export default defineConfig({

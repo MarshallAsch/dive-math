@@ -19,6 +19,7 @@ export const MODULES = [
 	'oxygen',
 	'planning',
 	'ccr',
+	'deco',
 ]
 
 describe('package surface', () => {

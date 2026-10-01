@@ -1,0 +1,60 @@
+{
+	"surfacePressure": 1,
+	"waterVapour": 0.0627,
+	"initialN2": 0.74065446,
+	"gradients": [0.3, 0.85, 1],
+	"profiles": [
+		{
+			"name": "ean32_decotengu",
+			"segments": [
+				{ "fromBar": 1, "toBar": 4, "minutes": 1.5, "fo2": 0.32, "fhe": 0 },
+				{ "fromBar": 4, "toBar": 4, "minutes": 20, "fo2": 0.32, "fhe": 0 },
+				{ "fromBar": 4, "toBar": 2, "minutes": 2, "fo2": 0.32, "fhe": 0 }
+			]
+		},
+		{
+			"name": "air_40m_25min",
+			"segments": [
+				{ "fromBar": 1, "toBar": 5, "minutes": 2, "fo2": 0.209, "fhe": 0 },
+				{ "fromBar": 5, "toBar": 5, "minutes": 25, "fo2": 0.209, "fhe": 0 },
+				{ "fromBar": 5, "toBar": 1.9, "minutes": 3.1, "fo2": 0.209, "fhe": 0 },
+				{ "fromBar": 1.9, "toBar": 1.9, "minutes": 4, "fo2": 0.209, "fhe": 0 },
+				{
+					"fromBar": 1.9,
+					"toBar": 1.3,
+					"minutes": 0.6,
+					"fo2": 0.209,
+					"fhe": 0
+				},
+				{ "fromBar": 1.3, "toBar": 1.3, "minutes": 12, "fo2": 0.209, "fhe": 0 },
+				{ "fromBar": 1.3, "toBar": 1, "minutes": 0.3, "fo2": 0.209, "fhe": 0 }
+			]
+		},
+		{
+			"name": "tx1845_60m_20min_ean50_o2",
+			"segments": [
+				{ "fromBar": 1, "toBar": 7, "minutes": 3, "fo2": 0.18, "fhe": 0.45 },
+				{ "fromBar": 7, "toBar": 7, "minutes": 17, "fo2": 0.18, "fhe": 0.45 },
+				{
+					"fromBar": 7,
+					"toBar": 3.1,
+					"minutes": 3.9,
+					"fo2": 0.18,
+					"fhe": 0.45
+				},
+				{ "fromBar": 3.1, "toBar": 3.1, "minutes": 3, "fo2": 0.5, "fhe": 0 },
+				{ "fromBar": 3.1, "toBar": 1.6, "minutes": 1.5, "fo2": 0.5, "fhe": 0 },
+				{ "fromBar": 1.6, "toBar": 1.6, "minutes": 8, "fo2": 1, "fhe": 0 },
+				{ "fromBar": 1.6, "toBar": 1, "minutes": 0.6, "fo2": 1, "fhe": 0 }
+			]
+		},
+		{
+			"name": "heliox_90m_short",
+			"segments": [
+				{ "fromBar": 1, "toBar": 10, "minutes": 4.5, "fo2": 0.1, "fhe": 0.9 },
+				{ "fromBar": 10, "toBar": 10, "minutes": 10, "fo2": 0.1, "fhe": 0.9 },
+				{ "fromBar": 10, "toBar": 5, "minutes": 5, "fo2": 0.1, "fhe": 0.9 }
+			]
+		}
+	]
+}

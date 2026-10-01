@@ -2,6 +2,7 @@ import { describe, expectTypeOf, it } from 'vitest'
 import * as root from 'dive-math'
 import { mod, type Gas } from 'dive-math/gas'
 import { partialPressureBlend, type BlendResult } from 'dive-math/blending'
+import { planDive, type DivePlan, type PlanInput } from 'dive-math/deco'
 import { classifyO2Cell, type O2CellVerdict } from 'dive-math/ccr'
 
 describe('public API types', () => {
@@ -19,6 +20,10 @@ describe('public API types', () => {
 	})
 	it('blend result', () =>
 		expectTypeOf(partialPressureBlend).returns.toEqualTypeOf<BlendResult>())
+	it('deco plan', () => {
+		expectTypeOf(planDive).parameters.toEqualTypeOf<[PlanInput]>()
+		expectTypeOf(planDive).returns.toEqualTypeOf<DivePlan>()
+	})
 	it('O₂ cell verdict nullable', () =>
 		expectTypeOf(classifyO2Cell).returns.toEqualTypeOf<O2CellVerdict | null>())
 	it('root re-exports subpath symbols', () =>
