@@ -86,6 +86,12 @@ Surface tissues start saturated at $(P_{surf} - P_{H_2O}) \times 0.7902$ (N₂ +
 
 `bailoutPlan` evaluates a bailout at the end of every level below the surface and returns the worst bailout point among the ends of the levels (largest bailout gas requirement; ties go to the longer runtime). For each candidate it replays the bottom to that level's end, then ascends on open circuit on `bailoutGases` with gas switches at MOD. The bailout starts on the richest bailout gas within `maxDecoPpo2` at that depth (the leanest, with a `no-breathable-gas` warning, if none is). `bailoutDepthM` and `bailoutRuntimeMinutes` report where and when the chosen bailout starts.
 
+## Oxygen exposure
+
+`oxygenLimits` picks the CNS limit set: `'noaa-1991'` (default) or `'hoyt-2025'` (see [oxygen exposure](./oxygen.md)). Descent and level segments are `working`; ascent and stop segments are `resting`. A level's `phase` overrides this for the level and the travel into it.
+
+`DivePlan.oxygen` holds the totals (`working` and `resting` under Hoyt). Every segment carries the cumulative `cnsPercent` and `otu` at its end. `dayExposure` takes the day's earlier dives and surface intervals (the `dailyExposure` items) for the daily checks.
+
 ## Warnings
 
 Plans never throw for unsafe-but-valid dives; they return `warnings`:
@@ -95,6 +101,9 @@ Plans never throw for unsafe-but-valid dives; they return `warnings`:
 - `density-recommended` / `density-hard`: above 5.2 / 6.3 g/L;
 - `ceiling-violated`: a multi-level ascent above the GF-high ceiling;
 - `no-breathable-gas`: no gas within the ppO₂ limits at a stop depth;
+- `cns-single`: NOAA single-exposure CNS over 100 %; `cns-working` / `cns-resting` under Hoyt 2025;
+- `cns-daily`: this dive plus `dayExposure` over the 24-hour limits;
+- `otu-daily`: this dive plus `dayExposure` over 850 OTU (REPEX day 1);
 - `deco-too-long`: more than 24 h of stops. The plan is truncated: it stops at the depth where it was truncated, and `runtimeMinutes` and `gasUse` cover only the planned part.
 
 ## Examples
@@ -113,6 +122,7 @@ baker.firstStopM // => 54
 baker.runtimeMinutes > 119 && baker.runtimeMinutes < 121 // => true
 const ccr = { levels: [{ depthM: 60, minutes: 25, breathing: { kind: 'ccr' as const, diluent: gas(0.18, 0.45), setpoint: 1.3 } }], gfLow: 0.3, gfHigh: 0.8 }
 bailoutPlan(ccr, { bailoutGases: [gas(0.18, 0.45), gas(0.5), gas(1)], rmvLpm: 20 }).gasRequired.length // => 3
+planDive({ ...ccr, oxygenLimits: 'hoyt-2025' }).oxygen.resting! < 100 // => true
 ```
 
 ## Validation

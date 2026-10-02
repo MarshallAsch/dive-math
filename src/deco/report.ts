@@ -8,10 +8,20 @@ import {
 	HARD_MAX_DENSITY,
 	RECOMMENDED_MAX_DENSITY,
 } from '../density'
-import { segmentCns, segmentOtu } from '../oxygen'
+import {
+	cnsTotals,
+	dailyExposure,
+	repexAllowance,
+	segmentCns,
+	segmentOtu,
+	type CnsLimits,
+	type CnsTotals,
+	type DayItem,
+	type Exposure,
+} from '../oxygen'
 import { ataAtDepth } from '../pressure'
 import type { Gas } from '../types'
-import { ppo2Range, type PlannedSegment } from './ascent'
+import { ppo2Range, type PlannedSegment, type SegmentDraft } from './ascent'
 import { setpointAt, type Breathing } from './breathing'
 import type { TissueOptions } from './tissues'
 
@@ -27,6 +37,15 @@ export type PlanWarning =
 			readonly segmentIndex: number
 	  }
 	| { readonly code: 'no-breathable-gas'; readonly depthM: number }
+	/**
+	 * Oxygen limits exceeded: `cns-single` (NOAA), `cns-working` /
+	 * `cns-resting` (Hoyt 2025 phase budgets), `cns-daily` (24 h limits with
+	 * `dayExposure`), `otu-daily` (REPEX day 1, 850 OTU).
+	 */
+	| {
+			readonly code:
+				'cns-single' | 'cns-working' | 'cns-resting' | 'cns-daily' | 'otu-daily'
+	  }
 	/**
 	 * Stops exceed MAX_DECO_MINUTES: the plan stops at the depth where it was
 	 * truncated; `runtimeMinutes` and `gasUse` cover only the planned part.
@@ -55,7 +74,7 @@ function gasAt(b: Breathing, depthM: number, opts?: TissueOptions): Gas {
  * @example segmentWarnings(plan.segments, { maxBottomPpo2: 1.4, maxDecoPpo2: 1.6 })
  */
 export function segmentWarnings(
-	segments: readonly PlannedSegment[],
+	segments: readonly SegmentDraft[],
 	limits: WarningLimits,
 ): PlanWarning[] {
 	const out: PlanWarning[] = []
@@ -76,23 +95,94 @@ export function segmentWarnings(
 	return out
 }
 
+/** Oxygen-report options. */
+export interface OxygenOptions extends TissueOptions {
+	/** ['noaa-1991'] */
+	limits?: CnsLimits
+}
+
 /**
- * CNS % and OTU over the plan (each segment at its mean ppO₂).
- * @example oxygenTotals(plan.segments) // { cnsPercent: 8.2, otu: 31 }
+ * Each segment as a constant-ppO₂ exposure at its mean ppO₂.
+ * @example segmentExposures(plan.segments)[0] // { ppo2: 0.81, minutes: 1.5, phase: 'working' }
+ */
+export function segmentExposures(
+	segments: readonly SegmentDraft[],
+	opts?: TissueOptions,
+): Exposure[] {
+	return segments.map((s) => {
+		const [lo, hi] = ppo2Range(s, opts)
+		return { ppo2: (lo + hi) / 2, minutes: s.minutes, phase: s.phase }
+	})
+}
+
+/**
+ * Segments with cumulative CNS % and OTU at each segment's end.
+ * @example withOxygen(drafts).at(-1)?.cnsPercent
+ */
+export function withOxygen(
+	segments: readonly SegmentDraft[],
+	opts?: OxygenOptions,
+): PlannedSegment[] {
+	const limits = opts?.limits ?? 'noaa-1991'
+	const exposures = segmentExposures(segments, opts)
+	let working = 0
+	let resting = 0
+	let otu = 0
+	return segments.map((s, i) => {
+		const e = exposures[i] as Exposure
+		const cns = segmentCns({ ...e, limits })
+		if (s.phase === 'working') working += cns
+		else resting += cns
+		otu += segmentOtu(e)
+		const cnsPercent =
+			limits === 'noaa-1991' ? working + resting : Math.max(working, resting)
+		return { ...s, cnsPercent, otu }
+	})
+}
+
+/**
+ * CNS and OTU over the plan (each segment at its mean ppO₂).
+ * @example oxygenTotals(plan.segments) // { limits: 'noaa-1991', cnsPercent: 8.2, otu: 31 }
  */
 export function oxygenTotals(
-	segments: readonly PlannedSegment[],
-	opts?: TissueOptions,
-): { cnsPercent: number; otu: number } {
-	let cnsPercent = 0
-	let otu = 0
-	for (const s of segments) {
-		const [lo, hi] = ppo2Range(s, opts)
-		const ppo2 = (lo + hi) / 2
-		cnsPercent += segmentCns({ ppo2, minutes: s.minutes })
-		otu += segmentOtu({ ppo2, minutes: s.minutes })
+	segments: readonly SegmentDraft[],
+	opts?: OxygenOptions,
+): CnsTotals & { readonly otu: number } {
+	const exposures = segmentExposures(segments, opts)
+	const otu = exposures.reduce((sum, e) => sum + segmentOtu(e), 0)
+	return { ...cnsTotals(exposures, { limits: opts?.limits }), otu }
+}
+
+/**
+ * Oxygen-limit warnings for a plan, including earlier dives the same day.
+ * @example oxygenWarnings(plan.segments, { limits: 'hoyt-2025' }) // []
+ */
+export function oxygenWarnings(
+	segments: readonly SegmentDraft[],
+	opts?: OxygenOptions & { dayExposure?: readonly DayItem[] },
+): PlanWarning[] {
+	const limits = opts?.limits ?? 'noaa-1991'
+	const over = (pct: number | undefined) => (pct ?? 0) > 100 + 1e-9
+	const out: PlanWarning[] = []
+	const totals = oxygenTotals(segments, opts)
+	if (limits === 'noaa-1991') {
+		if (over(totals.cnsPercent)) out.push({ code: 'cns-single' })
+	} else {
+		if (over(totals.working)) out.push({ code: 'cns-working' })
+		if (over(totals.resting)) out.push({ code: 'cns-resting' })
 	}
-	return { cnsPercent, otu }
+	const earlier = opts?.dayExposure ?? []
+	const earlierDives: Exposure[] = earlier.flatMap((item) =>
+		item.type === 'dive' ? [item] : [],
+	)
+	const daily = cnsTotals(
+		[...earlierDives, ...segmentExposures(segments, opts)],
+		{ limits, daily: true },
+	)
+	if (over(daily.cnsPercent)) out.push({ code: 'cns-daily' })
+	if (dailyExposure(earlier).totalOtu + totals.otu > repexAllowance(1) + 1e-9)
+		out.push({ code: 'otu-daily' })
+	return out
 }
 
 /** Gas-use inputs; `decoRmvLpm` applies to ascent and stop segments. */
@@ -118,7 +208,7 @@ const sameGas = (a: Gas, b: Gas) =>
  * @example gasUse(plan.segments, { rmvLpm: 20, cylinders: [{ gas: AIR, volumeL: 24 }] })
  */
 export function gasUse(
-	segments: readonly PlannedSegment[],
+	segments: readonly SegmentDraft[],
 	consumption: Consumption,
 	opts?: TissueOptions,
 ): GasUse[] {

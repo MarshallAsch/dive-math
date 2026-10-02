@@ -7,20 +7,30 @@ import {
 	assertNonNegative,
 	assertPositive,
 } from '../internal/validate'
+import {
+	dailyExposure,
+	type CnsLimits,
+	type CnsTotals,
+	type DayItem,
+	type O2Phase,
+} from '../oxygen'
 import { ataAtDepth } from '../pressure'
 import type { Gas } from '../types'
 import {
 	ascend,
 	type AscentRules,
-	type PlannedSegment,
 	type DecoStop,
+	type PlannedSegment,
+	type SegmentDraft,
 } from './ascent'
 import { assertBreathing, type Breathing } from './breathing'
 import { assertGf, toleratedAmbient } from './limits'
 import {
 	gasUse,
 	oxygenTotals,
+	oxygenWarnings,
 	segmentWarnings,
+	withOxygen,
 	type Consumption,
 	type GasUse,
 	type PlanWarning,
@@ -37,6 +47,10 @@ export interface Level {
 	readonly depthM: number
 	readonly minutes: number
 	readonly breathing: Breathing
+	/**
+	 * Oxygen-exposure phase of this level and the travel into it. ['working']
+	 */
+	readonly phase?: O2Phase
 }
 
 /** Inputs to {@link planDive}. Defaults in brackets. */
@@ -68,6 +82,10 @@ export interface PlanInput extends TissueOptions {
 	startTissues?: Tissues
 	/** Enables {@link DivePlan.gasUse}. */
 	consumption?: Consumption
+	/** CNS limit set. ['noaa-1991'] */
+	oxygenLimits?: CnsLimits
+	/** Earlier dives and surface intervals the same day, for daily warnings. [] */
+	dayExposure?: readonly DayItem[]
 }
 
 /**
@@ -86,7 +104,7 @@ export interface DivePlan {
 	 */
 	readonly firstStopM: number | null
 	readonly endTissues: Tissues
-	readonly oxygen: { cnsPercent: number; otu: number }
+	readonly oxygen: CnsTotals & { readonly otu: number }
 	readonly gasUse?: GasUse[]
 	readonly warnings: PlanWarning[]
 }
@@ -99,6 +117,8 @@ export interface ResolvedPlanInput extends AscentRules {
 	safetyStop: boolean
 	startTissues?: Tissues
 	consumption?: Consumption
+	oxygenLimits: CnsLimits
+	dayExposure: readonly DayItem[]
 }
 
 /**
@@ -120,13 +140,20 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
 		switchMinutes: input.switchMinutes ?? 0,
 		safetyStop: input.safetyStop ?? false,
 		roundStops: input.roundStops ?? true,
+		oxygenLimits: input.oxygenLimits ?? 'noaa-1991',
+		dayExposure: input.dayExposure ?? [],
 	}
 	if (r.levels.length === 0) throw new RangeError('levels must not be empty')
 	r.levels.forEach((l, i) => {
 		assertNonNegative(`levels[${i}].depthM`, l.depthM)
 		assertNonNegative(`levels[${i}].minutes`, l.minutes)
 		assertBreathing(l.breathing, `levels[${i}].breathing`)
+		if (l.phase !== undefined && l.phase !== 'working' && l.phase !== 'resting')
+			throw new RangeError(`levels[${i}].phase must be 'working' or 'resting'`)
 	})
+	if (r.oxygenLimits !== 'noaa-1991' && r.oxygenLimits !== 'hoyt-2025')
+		throw new RangeError(`oxygenLimits must be 'noaa-1991' or 'hoyt-2025'`)
+	dailyExposure(r.dayExposure)
 	r.decoGases.forEach((g, i) => assertGas(g, `decoGases[${i}]`))
 	assertGf('gfLow', r.gfLow)
 	assertGf('gfHigh', r.gfHigh)
@@ -173,21 +200,22 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
  * @example bottomSegments(resolvePlanInput(input)).segments.length
  */
 export function bottomSegments(r: ResolvedPlanInput): {
-	segments: PlannedSegment[]
+	segments: SegmentDraft[]
 	tissues: Tissues[]
 	warnings: PlanWarning[]
 } {
-	const segments: PlannedSegment[] = []
+	const segments: SegmentDraft[] = []
 	const tissues: Tissues[] = []
 	const warnings: PlanWarning[] = []
 	let t = r.startTissues ?? initialTissues(r)
 	let depth = 0
 	let rt = 0
 	const add = (
-		kind: PlannedSegment['kind'],
+		kind: SegmentDraft['kind'],
 		to: number,
 		minutes: number,
 		breathing: Breathing,
+		phase: O2Phase,
 	) => {
 		t = loadSegment(
 			t,
@@ -202,6 +230,7 @@ export function bottomSegments(r: ResolvedPlanInput): {
 			minutes,
 			runtimeMinutes: rt,
 			breathing,
+			phase,
 		})
 		tissues.push(t)
 		if (
@@ -216,12 +245,14 @@ export function bottomSegments(r: ResolvedPlanInput): {
 		depth = to
 	}
 	for (const level of r.levels) {
+		const phase = level.phase ?? 'working'
 		if (level.depthM > depth)
 			add(
 				'descent',
 				level.depthM,
 				(level.depthM - depth) / r.descentRate,
 				level.breathing,
+				phase,
 			)
 		else if (level.depthM < depth)
 			add(
@@ -229,9 +260,10 @@ export function bottomSegments(r: ResolvedPlanInput): {
 				level.depthM,
 				(depth - level.depthM) / r.ascentRate,
 				level.breathing,
+				phase,
 			)
 		if (level.minutes > 0)
-			add('level', level.depthM, level.minutes, level.breathing)
+			add('level', level.depthM, level.minutes, level.breathing, phase)
 	}
 	return { segments, tissues, warnings }
 }
@@ -243,22 +275,28 @@ export function bottomSegments(r: ResolvedPlanInput): {
 export function finishPlan(
 	r: ResolvedPlanInput,
 	parts: {
-		segments: PlannedSegment[]
+		segments: SegmentDraft[]
 		stops: DecoStop[]
 		endTissues: Tissues
 		firstStopM: number | null
 		warnings: PlanWarning[]
 	},
 ): DivePlan {
-	const warnings = [...parts.warnings, ...segmentWarnings(parts.segments, r)]
+	const o2 = { ...r, limits: r.oxygenLimits }
+	const warnings = [
+		...parts.warnings,
+		...segmentWarnings(parts.segments, r),
+		...oxygenWarnings(parts.segments, { ...o2, dayExposure: r.dayExposure }),
+	]
 	const last = parts.segments.at(-1)
+	const segments: PlannedSegment[] = withOxygen(parts.segments, o2)
 	return {
-		segments: parts.segments,
+		segments,
 		stops: parts.stops,
 		runtimeMinutes: last ? last.runtimeMinutes : 0,
 		firstStopM: parts.firstStopM,
 		endTissues: parts.endTissues,
-		oxygen: oxygenTotals(parts.segments, r),
+		oxygen: oxygenTotals(parts.segments, o2),
 		...(r.consumption
 			? { gasUse: gasUse(parts.segments, r.consumption, r) }
 			: {}),
@@ -292,12 +330,12 @@ export function planDive(input: PlanInput): DivePlan {
 		startState.depthM > SAFETY_STOP_M
 	) {
 		// Ascend to 5 m, hold 3 min, then surface; no deco was required.
-		const segs: PlannedSegment[] = []
+		const segs: SegmentDraft[] = []
 		let t = startState.tissues
 		let rt = startState.runtimeMinutes
 		const b = startState.breathing
 		const step = (
-			kind: PlannedSegment['kind'],
+			kind: SegmentDraft['kind'],
 			from: number,
 			to: number,
 			minutes: number,
@@ -315,6 +353,7 @@ export function planDive(input: PlanInput): DivePlan {
 				minutes,
 				runtimeMinutes: rt,
 				breathing: b,
+				phase: 'resting',
 			})
 		}
 		step(

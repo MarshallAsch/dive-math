@@ -4,6 +4,7 @@
  * @module
  */
 import { HYPOXIC_PPO2 } from '../ccr/loop'
+import type { O2Phase } from '../oxygen'
 import { ataAtDepth } from '../pressure'
 import type { Gas } from '../types'
 import { breathingPpo2, type Breathing } from './breathing'
@@ -15,14 +16,24 @@ import {
 	type Tissues,
 } from './tissues'
 
-/** One planned piece of the dive; `runtimeMinutes` is the runtime at its end. */
-export interface PlannedSegment {
+/** A planned piece of the dive before oxygen totals; `runtimeMinutes` is the runtime at its end. */
+export interface SegmentDraft {
 	readonly kind: 'descent' | 'level' | 'ascent' | 'stop'
 	readonly fromDepthM: number
 	readonly toDepthM: number
 	readonly minutes: number
 	readonly runtimeMinutes: number
 	readonly breathing: Breathing
+	/** Oxygen-exposure phase: working (bottom) or resting (deco). */
+	readonly phase: O2Phase
+}
+
+/** One planned piece of the dive, with cumulative oxygen exposure at its end. */
+export interface PlannedSegment extends SegmentDraft {
+	/** Cumulative CNS % (Hoyt: the larger phase). */
+	readonly cnsPercent: number
+	/** Cumulative OTU. */
+	readonly otu: number
 }
 
 /** A decompression (or gas-switch / safety) stop. */
@@ -49,7 +60,7 @@ export interface AscentRules extends TissueOptions {
 
 /** Result of {@link ascend}. */
 export interface AscentResult {
-	segments: PlannedSegment[]
+	segments: SegmentDraft[]
 	stops: DecoStop[]
 	tissues: Tissues
 	runtimeMinutes: number
@@ -101,7 +112,7 @@ export function ascend(
 	},
 	rules: AscentRules,
 ): AscentResult {
-	const segments: PlannedSegment[] = []
+	const segments: SegmentDraft[] = []
 	const stops: DecoStop[] = []
 	const noBreathableGasAt: number[] = []
 	let { tissues: t, depthM: d, runtimeMinutes: rt, breathing } = start
@@ -110,7 +121,7 @@ export function ascend(
 	let truncated = false
 
 	const push = (
-		kind: PlannedSegment['kind'],
+		kind: SegmentDraft['kind'],
 		from: number,
 		to: number,
 		minutes: number,
@@ -123,6 +134,7 @@ export function ascend(
 			minutes,
 			runtimeMinutes: rt,
 			breathing,
+			phase: 'resting',
 		})
 	}
 	const hold = (minutes: number) => {
@@ -236,7 +248,7 @@ export function ascend(
  * @example ppo2Range(segment) // [0.21, 1.05]
  */
 export function ppo2Range(
-	s: PlannedSegment,
+	s: SegmentDraft,
 	opts?: TissueOptions,
 ): [number, number] {
 	const a = breathingPpo2(s.breathing, s.fromDepthM, opts)
