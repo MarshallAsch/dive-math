@@ -102,6 +102,8 @@ const cases: [string, (v: number) => unknown][] = [
 		(v) => dm.cnsLimitMinutes(v, { limits: 'hoyt-2025', phase: 'working' }),
 	],
 	['cnsTotals', (v) => dm.cnsTotals([{ ppo2: 1.3, minutes: v }])],
+	['repex', (v) => dm.repex([v])],
+	['repexAllowance', (v) => dm.repexAllowance(v)],
 	['segmentOtu', (v) => dm.segmentOtu({ ppo2: 1.4, minutes: v })],
 	['sac', (v) => dm.sac(1800, v, 30)],
 	[

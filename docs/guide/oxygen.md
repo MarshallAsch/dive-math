@@ -2,7 +2,7 @@
 
 ## What it's for
 
-Tracks oxygen toxicity. The CNS clock uses the NOAA 1991 limits by default, or the Hoyt 2025 revision for ppO₂ ≤ 1.3. OTU tracks pulmonary exposure. `dailyExposure` runs a whole day of dives and surface intervals.
+Tracks oxygen toxicity. The CNS clock uses the NOAA 1991 limits by default, or the Hoyt 2025 revision for ppO₂ ≤ 1.3. OTU tracks pulmonary exposure, with REPEX for multi-day missions. `dailyExposure` runs a whole day of dives and surface intervals.
 
 ## The NOAA table
 
@@ -39,6 +39,10 @@ Hoyt et al. (2025), endorsed at a NOAA workshop, revise the limit at an inspired
 
 Caveats from the paper: the data come mostly from precisely controlled ppO₂, so minimise upward drift around a setpoint. "Resting" means no more activity than needed to hold position (formally an RMV below 22.5 L/min). Beyond 8 hours is poorly informed by data. Following the limits does not guarantee that CNS toxicity won't occur.
 
+## REPEX
+
+`repex(dailyOtu)` checks a multi-day mission against the REPEX cumulative OTU allowance: 850 on day 1, 1400 by day 2, 1860 by day 3, …, 4200 by day 14, then 300 more per day up to day 30.
+
 ## Formulas
 
 $$CNS\% = 100\,\frac{t}{t_{lim}}$$
@@ -65,19 +69,21 @@ $$CNS(t) = CNS_0 \cdot 0.5^{\,t/90}$$
 
 - CNS limits: NOAA Diving Manual (1991), oxygen partial pressure and exposure time limits.
 - Revised 1.3 ata limits: Hoyt J, Murphy FG, Pollock NW, et al. Revised guideline for central nervous system oxygen toxicity exposure limits when using an inspired PO₂ of 1.3 atmospheres. Diving Hyperb Med. 2025;55(3):262–270. doi:10.28920/dhm55.3.262-270.
+- REPEX: Hamilton RW. Tolerating exposure to high oxygen levels: Repex and other methods. MTS Journal 23(4), 1989.
 - OTU exponent 0.83 and 0.5 ata threshold, and the 90 minute half-time, are the constants used in the source.
 
 ## Examples
 
 <!-- prettier-ignore -->
 ```ts example
-import { cnsLimitMinutes, cnsTotals, segmentOtu, dailyExposure } from 'dive-math/oxygen'
+import { cnsLimitMinutes, cnsTotals, segmentOtu, dailyExposure, repex } from 'dive-math/oxygen'
 cnsLimitMinutes(1.4) // => 150
 segmentOtu({ ppo2: 1.4, minutes: 30 }) // => 48.86
 dailyExposure([{ type: 'dive', ppo2: 1.4, minutes: 30 }, { type: 'surface', minutes: 90 }]).endCnsPercent // => 10
 cnsLimitMinutes(1.3, { daily: true }) // => 210
 cnsLimitMinutes(1.3, { limits: 'hoyt-2025', phase: 'resting' }) // => 240
 cnsTotals([{ ppo2: 1.3, minutes: 240, phase: 'working' }, { ppo2: 1.3, minutes: 120, phase: 'resting' }], { limits: 'hoyt-2025' }).cnsPercent // => 100
+repex([800, 700]).exceeded // => true
 ```
 
 ## API

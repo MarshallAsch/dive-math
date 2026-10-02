@@ -57,6 +57,30 @@ export const HOYT_PPO2 = 1.3
 /** Hoyt 2025 budget per phase (working, resting), minutes, per dive and per 24 h. */
 export const HOYT_PHASE_MINUTES = 240
 
+// Source: Hamilton RW, MTS Journal 23(4), 1989, Fig. 1 (REPEX; Hamilton,
+// Kenyon, Peterson, Butler, Beers 1988).
+/** REPEX allowable cumulative OTU by mission day (days 1–14). */
+export const REPEX_TABLE: readonly (readonly [number, number])[] = freezeRows([
+	[1, 850],
+	[2, 1400],
+	[3, 1860],
+	[4, 2100],
+	[5, 2300],
+	[6, 2520],
+	[7, 2660],
+	[8, 2800],
+	[9, 2970],
+	[10, 3100],
+	[11, 3300],
+	[12, 3600],
+	[13, 3900],
+	[14, 4200],
+])
+/** REPEX daily OTU allowance for days 15–30. */
+export const REPEX_DAILY_AFTER_14 = 300
+/** Longest mission REPEX covers, days. */
+export const REPEX_MAX_DAYS = 30
+
 /** CNS limit set: NOAA 1991 (default) or the Hoyt 2025 revision at ppO₂ ≤ 1.3. */
 export type CnsLimits = 'noaa-1991' | 'hoyt-2025'
 /** Dive phase for the Hoyt 2025 budgets: working (bottom) or resting (deco). */
@@ -242,4 +266,50 @@ export function dailyExposure(
 		daily: cnsTotals(dives, { limits, daily: true }),
 		perDive,
 	}
+}
+
+/** REPEX allowance for a mission of `day` days, cumulative OTU. @example repexAllowance(3) // 1860 */
+export function repexAllowance(day: number): number {
+	if (!Number.isInteger(day) || day < 1 || day > REPEX_MAX_DAYS)
+		throw new RangeError(
+			`day must be an integer 1–${REPEX_MAX_DAYS} (got ${day})`,
+		)
+	if (day <= REPEX_TABLE.length) return (REPEX_TABLE[day - 1] as Row)[1]
+	const last = REPEX_TABLE[REPEX_TABLE.length - 1] as Row
+	return last[1] + REPEX_DAILY_AFTER_14 * (day - last[0])
+}
+
+/** Result of {@link repex}. */
+export interface RepexResult {
+	readonly days: readonly {
+		readonly day: number
+		readonly cumulativeOtu: number
+		readonly allowedOtu: number
+		readonly exceeded: boolean
+	}[]
+	readonly exceeded: boolean
+}
+
+/**
+ * Check a multi-day mission against REPEX. `dailyOtu[i]` is day i + 1.
+ * @example repex([600, 900]).exceeded // true (1500 > 1400)
+ */
+export function repex(dailyOtu: readonly number[]): RepexResult {
+	if (dailyOtu.length < 1 || dailyOtu.length > REPEX_MAX_DAYS)
+		throw new RangeError(
+			`dailyOtu must have 1–${REPEX_MAX_DAYS} days (got ${dailyOtu.length})`,
+		)
+	let cumulativeOtu = 0
+	const days = dailyOtu.map((otu, i) => {
+		assertNonNegative(`dailyOtu[${i}]`, otu)
+		cumulativeOtu += otu
+		const allowedOtu = repexAllowance(i + 1)
+		return {
+			day: i + 1,
+			cumulativeOtu,
+			allowedOtu,
+			exceeded: cumulativeOtu > allowedOtu + 1e-9,
+		}
+	})
+	return { days, exceeded: days.some((d) => d.exceeded) }
 }

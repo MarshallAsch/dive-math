@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
 	CNS_DAILY_TABLE,
+	REPEX_TABLE,
 	cnsLimitMinutes,
 	cnsTotals,
 	dailyExposure,
+	repex,
+	repexAllowance,
 	segmentCns,
 } from './oxygen'
 import { ataAtDepth } from './pressure'
@@ -88,6 +91,37 @@ describe('cnsTotals', () => {
 			cnsPercent: 100,
 			working: 100,
 			resting: 100,
+		})
+	})
+
+	describe('REPEX', () => {
+		// Hamilton 1989, Fig. 1.
+		it('matches the published table for days 1–14', () => {
+			const published = [
+				850, 1400, 1860, 2100, 2300, 2520, 2660, 2800, 2970, 3100, 3300, 3600,
+				3900, 4200,
+			]
+			expect(REPEX_TABLE.map((r) => r[1])).toEqual(published)
+			published.forEach((otu, i) => expect(repexAllowance(i + 1)).toBe(otu))
+		})
+		it('adds 300 per day after day 14', () => {
+			expect(repexAllowance(20)).toBe(6000)
+			expect(repexAllowance(30)).toBe(9000)
+		})
+		it('flags cumulative exceedance per day', () => {
+			const r = repex([800, 700, 300])
+			expect(r.days.map((d) => d.exceeded)).toEqual([false, true, false])
+			expect(r.days[1]).toMatchObject({ cumulativeOtu: 1500, allowedOtu: 1400 })
+			expect(r.exceeded).toBe(true)
+		})
+		it('exactly at the limit is not exceeded', () =>
+			expect(repex([850]).exceeded).toBe(false))
+		it('rejects bad input', () => {
+			expect(() => repex([])).toThrow(RangeError)
+			expect(() => repex(Array(31).fill(100))).toThrow(RangeError)
+			expect(() => repex([-1])).toThrow(RangeError)
+			expect(() => repexAllowance(0)).toThrow(RangeError)
+			expect(() => repexAllowance(1.5)).toThrow(RangeError)
 		})
 	})
 	it('Hoyt: a segment above 1.3 charges its NOAA % to its phase', () => {
