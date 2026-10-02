@@ -1,4 +1,5 @@
 /** Decompression planning: Bühlmann ZH-L16C with Baker gradient factors. @module */
+export * from './air-breaks'
 export * from './ascent'
 export * from './bailout'
 export * from './breathing'
