@@ -210,6 +210,10 @@ export function ascend(
 	}
 
 	while (d > EPS) {
+		// Re-select the break breathing on arrival, before any gas-switch hold.
+		const arrived = arriveClock(ab, clock, ctx())
+		clock = arrived.clock
+		if (arrived.noBreakGas) noBreakGasAt.push(d)
 		if (breathing.kind === 'oc') {
 			const current = breathing.gas
 			const best = richestGas(
@@ -230,9 +234,6 @@ export function ascend(
 				if (rules.switchMinutes > 0) hold(rules.switchMinutes)
 			}
 		}
-		const arrived = arriveClock(ab, clock, ctx())
-		clock = arrived.clock
-		if (arrived.noBreakGas) noBreakGasAt.push(d)
 		const n = nextStopDepth(d, rules.stopInterval, rules.lastStopM)
 		const travel = (d - n) / rules.ascentRate
 		const clearAfter = (waitMin: number): boolean => {

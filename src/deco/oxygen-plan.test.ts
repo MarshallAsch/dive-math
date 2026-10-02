@@ -3,7 +3,7 @@ import { gas } from '../gas'
 import { ataAtDepth } from '../pressure'
 import { bailoutPlan } from './bailout'
 import { gfAt, toleratedAmbient } from './limits'
-import type { Breathing } from './breathing'
+import { breathingPpo2, type Breathing } from './breathing'
 import { planDive, timeToSurface, type PlanInput } from './plan'
 import { replaySegments } from './profile'
 
@@ -294,6 +294,39 @@ describe('air breaks in plans', () => {
 				airBreaks: { oc: { onMinutes: 2, breakMinutes: 1, triggerPpo2: 0.9 } },
 			}),
 		).toBeLessThanOrEqual(1e-9))
+	it('a gas-switch hold mid-break uses the break gas re-selected there', () => {
+		// The break started at 12 m on 8/80; at 9 m 8/80 is hypoxic, so the
+		// switch hold onto EAN80 must continue the break on EAN50.
+		const triggerPpo2 = 1
+		const p = planDive({
+			levels: [
+				{
+					depthM: 70,
+					minutes: 25,
+					breathing: { kind: 'oc', gas: gas(0.08, 0.8) },
+				},
+			],
+			decoGases: [gas(0.5), gas(0.8)],
+			gfLow: 0.3,
+			gfHigh: 0.8,
+			switchMinutes: 1,
+			airBreaks: { oc: { onMinutes: 1, breakMinutes: 8, triggerPpo2 } },
+		})
+		const hold = p.segments.findIndex(
+			(s) => s.kind === 'ascent' && s.toDepthM === 9 && s.airBreak,
+		)
+		expect(hold).toBeGreaterThan(0)
+		expect(p.segments[hold + 1]).toMatchObject({
+			kind: 'stop',
+			airBreak: true,
+			breathing: { kind: 'oc', gas: gas(0.5) },
+		})
+		for (const s of p.segments.filter((x) => x.airBreak && x.kind === 'stop')) {
+			const ppo2 = breathingPpo2(s.breathing, s.toDepthM)
+			expect(ppo2).toBeGreaterThanOrEqual(0.16)
+			expect(ppo2).toBeLessThan(triggerPpo2)
+		}
+	})
 	it('breaks only happen during the deco ascent', () => {
 		const ndl = planDive({
 			levels: [
