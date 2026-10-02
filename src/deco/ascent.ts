@@ -277,7 +277,21 @@ export function ascend(
 				waitSec = hi
 			}
 			let wait = waitSec / 60
-			if (rules.roundStops) wait = Math.ceil(rt + wait - EPS) - rt
+			if (rules.roundStops) {
+				wait = Math.ceil(rt + wait - EPS) - rt
+				// With air breaks clearing is not monotonic in the wait (padding
+				// can start a break and the travel is then flown on the break gas),
+				// so re-check the rounded wait and extend it by whole minutes.
+				// Without breaks this never iterates.
+				while (!clearAfter(wait)) {
+					if (wait >= MAX_DECO_MINUTES) {
+						truncated = true
+						break
+					}
+					wait += 1
+				}
+				if (truncated) break
+			}
 			if (wait > EPS) hold(wait)
 			if (decoMinutes > MAX_DECO_MINUTES) {
 				truncated = true

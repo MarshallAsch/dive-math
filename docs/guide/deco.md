@@ -105,7 +105,7 @@ A mode with no key takes no breaks; `{ oc: {} }` turns on open-circuit breaks wi
 - **A stop may end mid-break.** The rest of the break is flown through the ascent (those segments are marked `airBreak`) and into the next stop. A break that runs out in transit ends on arrival. The break gas is re-selected at each depth; if none qualifies, the break ends early without resetting the clock.
 - If a break is due but no break gas exists, the plan stays on the normal gas and warns `no-break-gas`.
 
-Break pieces are separate `stop` segments with `airBreak: true`. Each `DecoStop` reports its `breakMinutes`. The stop-time search assumes clearing is monotonic in the wait; switching to a leaner break gas can on-gas fast compartments, so near a boundary the stop found may be slightly longer than the shortest possible one (never shorter).
+Break pieces are separate `stop` segments with `airBreak: true`. Each `DecoStop` reports its `breakMinutes`. With breaks, clearing is not monotonic in the wait: padding a stop can start a break, and the travel is then flown on the leaner break gas, which can on-gas fast compartments. The stop-time search therefore checks the wait it finds, and a stop rounded up to a whole minute of runtime is re-checked and extended by whole minutes until the next stop is clear. The stop found may be slightly longer than the shortest possible one, never shorter.
 
 ## Oxygen exposure
 

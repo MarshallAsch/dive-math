@@ -117,6 +117,48 @@ describe('oxygen limits in plans', () => {
 	})
 })
 
+// Largest overshoot of the GF ceiling (bar) at any resting ascent arrival.
+function ceilingExcess(input: PlanInput): number {
+	const p = planDive(input)
+	const tissues = replaySegments(p.segments)
+	let worst = -Infinity
+	p.segments.forEach((s, i) => {
+		if (s.kind !== 'ascent' || s.phase !== 'resting') return
+		const gf = gfAt(s.toDepthM, p.firstStopM, input.gfLow, input.gfHigh)
+		worst = Math.max(
+			worst,
+			toleratedAmbient(tissues[i]!, gf) - ataAtDepth(s.toDepthM),
+		)
+	})
+	return worst
+}
+// Reviewer-found profiles where a rounded stop arrived above the ceiling.
+const trimix45: PlanInput = {
+	levels: [
+		{
+			depthM: 45,
+			minutes: 30,
+			breathing: { kind: 'oc', gas: gas(0.21, 0.35) },
+		},
+	],
+	decoGases: [gas(0.5), gas(1)],
+	gfLow: 0.2,
+	gfHigh: 0.85,
+}
+const trimix90: PlanInput = {
+	levels: [
+		{ depthM: 90, minutes: 20, breathing: { kind: 'oc', gas: gas(0.1, 0.7) } },
+	],
+	decoGases: [gas(0.21, 0.35), gas(0.5), gas(1)],
+	gfLow: 0.2,
+	gfHigh: 0.85,
+}
+const ceilingProfiles: [string, PlanInput][] = [
+	['60/40 tx18/45', oc],
+	['45/30 tx21/35', trimix45],
+	['90/20 tx10/70', trimix90],
+]
+
 describe('air breaks in plans', () => {
 	it('defaults leave this plan unchanged (15.7 min on O₂ at 6 m < 20)', () => {
 		const a = planDive(oc)
@@ -222,24 +264,36 @@ describe('air breaks in plans', () => {
 		for (const s of breaks) expect(s.breathing.kind).toBe('oc')
 	})
 	it('stays within the GF ceiling at every stop arrival', () => {
-		for (const roundStops of [true, false])
-			for (const onMinutes of [3, 5, 12])
-				for (const triggerPpo2 of [1.3, 1.5]) {
-					const p = planDive({
-						...oc,
-						roundStops,
-						airBreaks: { oc: { onMinutes, triggerPpo2 } },
-					})
-					const tissues = replaySegments(p.segments)
-					p.segments.forEach((s, i) => {
-						if (s.kind !== 'ascent' || s.phase !== 'resting') return
-						const gf = gfAt(s.toDepthM, p.firstStopM, 0.4, 0.85)
-						expect(toleratedAmbient(tissues[i]!, gf)).toBeLessThanOrEqual(
-							ataAtDepth(s.toDepthM) + 1e-9,
-						)
-					})
-				}
+		for (const [name, base] of ceilingProfiles)
+			for (const roundStops of [true, false])
+				for (const onMinutes of [2, 5, 12])
+					for (const breakMinutes of [1, 2.5, 5])
+						for (const triggerPpo2 of [0.9, 1.3, 1.5]) {
+							const input = {
+								...base,
+								roundStops,
+								airBreaks: { oc: { onMinutes, breakMinutes, triggerPpo2 } },
+							}
+							expect(
+								ceilingExcess(input),
+								JSON.stringify([name, input.airBreaks, roundStops]),
+							).toBeLessThanOrEqual(1e-9)
+						}
 	})
+	it('re-checks rounded stops: 45 m / 30 min on 21/35, 2/2.5 breaks', () =>
+		expect(
+			ceilingExcess({
+				...trimix45,
+				airBreaks: { oc: { onMinutes: 2, breakMinutes: 2.5 } },
+			}),
+		).toBeLessThanOrEqual(1e-9))
+	it('re-checks rounded stops: 90 m / 20 min on 10/70, 2/1 breaks at 0.9', () =>
+		expect(
+			ceilingExcess({
+				...trimix90,
+				airBreaks: { oc: { onMinutes: 2, breakMinutes: 1, triggerPpo2: 0.9 } },
+			}),
+		).toBeLessThanOrEqual(1e-9))
 	it('breaks only happen during the deco ascent', () => {
 		const ndl = planDive({
 			levels: [
