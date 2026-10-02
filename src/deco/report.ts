@@ -36,7 +36,10 @@ export type PlanWarning =
 				| 'ceiling-violated'
 			readonly segmentIndex: number
 	  }
-	| { readonly code: 'no-breathable-gas'; readonly depthM: number }
+	| {
+			readonly code: 'no-breathable-gas' | 'no-break-gas'
+			readonly depthM: number
+	  }
 	/**
 	 * Oxygen limits exceeded: `cns-single` (NOAA), `cns-working` /
 	 * `cns-resting` (Hoyt 2025 phase budgets), `cns-daily` (24 h limits with

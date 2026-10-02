@@ -118,6 +118,12 @@ function bailAt(
 			depthM: d,
 		})),
 	)
+	warnings.push(
+		...[...new Set(up.noBreakGasAt)].map((d) => ({
+			code: 'no-break-gas' as const,
+			depthM: d,
+		})),
+	)
 	if (up.truncated) warnings.push({ code: 'deco-too-long' })
 
 	const plan = finishPlan(r, {

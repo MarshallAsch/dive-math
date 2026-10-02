@@ -7,6 +7,14 @@ import { HYPOXIC_PPO2 } from '../ccr/loop'
 import type { O2Phase } from '../oxygen'
 import { ataAtDepth } from '../pressure'
 import type { Gas } from '../types'
+import {
+	arriveClock,
+	CLOCK_START,
+	runClock,
+	travelClock,
+	type BreakContext,
+	type ResolvedAirBreaks,
+} from './air-breaks'
 import { breathingPpo2, type Breathing } from './breathing'
 import { gfAt, toleratedAmbient } from './limits'
 import {
@@ -26,6 +34,8 @@ export interface SegmentDraft {
 	readonly breathing: Breathing
 	/** Oxygen-exposure phase: working (bottom) or resting (deco). */
 	readonly phase: O2Phase
+	/** An air break, or travel flown on the break breathing. */
+	readonly airBreak?: true
 }
 
 /** One planned piece of the dive, with cumulative oxygen exposure at its end. */
@@ -41,6 +51,8 @@ export interface DecoStop {
 	readonly depthM: number
 	readonly minutes: number
 	readonly breathing: Breathing
+	/** Air-break minutes within this stop. */
+	readonly breakMinutes?: number
 }
 
 /** Rules for the ascent. All depths m, rates m/min, times min. */
@@ -56,6 +68,8 @@ export interface AscentRules extends TissueOptions {
 	roundStops: boolean
 	/** Open-circuit gases available on the ascent (ignored on CCR). */
 	decoGases: readonly Gas[]
+	/** Air breaks during the ascent. [none] */
+	airBreaks?: ResolvedAirBreaks
 }
 
 /** Result of {@link ascend}. */
@@ -66,6 +80,8 @@ export interface AscentResult {
 	runtimeMinutes: number
 	firstStopM: number | null
 	noBreathableGasAt: number[]
+	/** Depths where a break was due but no break gas was available. */
+	noBreakGasAt: number[]
 	truncated: boolean
 }
 
@@ -115,16 +131,32 @@ export function ascend(
 	const segments: SegmentDraft[] = []
 	const stops: DecoStop[] = []
 	const noBreathableGasAt: number[] = []
+	const noBreakGasAt: number[] = []
 	let { tissues: t, depthM: d, runtimeMinutes: rt, breathing } = start
 	let first: number | null = null
 	let decoMinutes = 0
 	let truncated = false
+	const ab = rules.airBreaks
+	let clock = CLOCK_START
+	// Break-gas candidates: the gas the ascent started on plus the deco gases.
+	const carried =
+		start.breathing.kind === 'oc'
+			? [start.breathing.gas, ...rules.decoGases]
+			: []
+	const ctx = (): BreakContext => ({
+		depthM: d,
+		normal: breathing,
+		gases: carried,
+		opts: rules,
+	})
 
 	const push = (
 		kind: SegmentDraft['kind'],
 		from: number,
 		to: number,
 		minutes: number,
+		b: Breathing = breathing,
+		airBreak = false,
 	) => {
 		rt += minutes
 		segments.push({
@@ -133,14 +165,27 @@ export function ascend(
 			toDepthM: to,
 			minutes,
 			runtimeMinutes: rt,
-			breathing,
+			breathing: b,
 			phase: 'resting',
+			...(airBreak ? { airBreak: true as const } : {}),
 		})
 	}
 	const hold = (minutes: number) => {
-		t = atConstantDepth(t, d, minutes, breathing, rules)
-		push('stop', d, d, minutes)
-		stops.push({ depthM: d, minutes, breathing })
+		const run = runClock(ab, clock, minutes, ctx())
+		let breakMinutes = 0
+		for (const p of run.pieces) {
+			t = atConstantDepth(t, d, p.minutes, p.breathing, rules)
+			push('stop', d, d, p.minutes, p.breathing, p.airBreak)
+			if (p.airBreak) breakMinutes += p.minutes
+		}
+		clock = run.clock
+		if (run.noBreakGas) noBreakGasAt.push(d)
+		stops.push({
+			depthM: d,
+			minutes,
+			breathing,
+			...(breakMinutes > 0 ? { breakMinutes } : {}),
+		})
 		decoMinutes += minutes
 	}
 
@@ -185,11 +230,22 @@ export function ascend(
 				if (rules.switchMinutes > 0) hold(rules.switchMinutes)
 			}
 		}
+		const arrived = arriveClock(ab, clock, ctx())
+		clock = arrived.clock
+		if (arrived.noBreakGas) noBreakGasAt.push(d)
 		const n = nextStopDepth(d, rules.stopInterval, rules.lastStopM)
 		const travel = (d - n) / rules.ascentRate
 		const clearAfter = (waitMin: number): boolean => {
-			let s = waitMin > 0 ? atConstantDepth(t, d, waitMin, breathing, rules) : t
-			s = duringDepthChange(s, d, n, travel, breathing, rules)
+			let s = t
+			let c = clock
+			if (waitMin > 0) {
+				const run = runClock(ab, c, waitMin, ctx())
+				for (const p of run.pieces)
+					s = atConstantDepth(s, d, p.minutes, p.breathing, rules)
+				c = run.clock
+			}
+			const tr = travelClock(ab, c, travel, ctx())
+			s = duringDepthChange(s, d, n, travel, tr.breathing, rules)
 			const gf = gfAt(n, first, rules.gfLow, rules.gfHigh)
 			return toleratedAmbient(s, gf) <= ataAtDepth(n, rules) + 1e-12
 		}
@@ -228,8 +284,10 @@ export function ascend(
 				break
 			}
 		}
-		t = duringDepthChange(t, d, n, travel, breathing, rules)
-		push('ascent', d, n, travel)
+		const tr = travelClock(ab, clock, travel, ctx())
+		t = duringDepthChange(t, d, n, travel, tr.breathing, rules)
+		push('ascent', d, n, travel, tr.breathing, tr.airBreak)
+		clock = tr.clock
 		d = n
 	}
 	return {
@@ -239,6 +297,7 @@ export function ascend(
 		runtimeMinutes: rt,
 		firstStopM: first,
 		noBreathableGasAt,
+		noBreakGasAt,
 		truncated,
 	}
 }

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { gas } from '../gas'
+import { ataAtDepth } from '../pressure'
+import { bailoutPlan } from './bailout'
+import { gfAt, toleratedAmbient } from './limits'
 import type { Breathing } from './breathing'
-import { planDive, type PlanInput } from './plan'
+import { planDive, timeToSurface, type PlanInput } from './plan'
+import { replaySegments } from './profile'
 
 const tmx: Breathing = { kind: 'oc', gas: gas(0.18, 0.45) }
 // 60 m / 40 min on 18/45 with EAN50 and O₂, GF 40/85: 15.7 min on O₂ at 6 m
@@ -110,5 +114,183 @@ describe('oxygen limits in plans', () => {
 		expect(() =>
 			planDive({ ...oc, dayExposure: [{ type: 'surface', minutes: -1 }] }),
 		).toThrow(RangeError)
+	})
+})
+
+describe('air breaks in plans', () => {
+	it('defaults leave this plan unchanged (15.7 min on O₂ at 6 m < 20)', () => {
+		const a = planDive(oc)
+		const b = planDive({ ...oc, airBreaks: { oc: {} } })
+		expect(b.runtimeMinutes).toBe(a.runtimeMinutes)
+		expect(b.segments.some((s) => s.airBreak)).toBe(false)
+	})
+	it('a 1.3 trigger carries the clock into 3 m and adds two breaks', () => {
+		const p = planDive({ ...oc, airBreaks: { oc: { triggerPpo2: 1.3 } } })
+		expect(p.runtimeMinutes).toBeCloseTo(142.3, 9)
+		const breaks = p.segments.filter((s) => s.airBreak)
+		expect(breaks.map((s) => [s.toDepthM, s.minutes])).toEqual([
+			[3, 5],
+			[3, 5],
+		])
+		// Back gas: the leanest breathable carried gas.
+		for (const s of breaks) expect(s.breathing).toEqual(tmx)
+		expect(p.stops.at(-1)).toMatchObject({ depthM: 3, breakMinutes: 10 })
+	})
+	it('tissues replay exactly through break segments', () => {
+		const p = planDive({ ...oc, airBreaks: { oc: { onMinutes: 4 } } })
+		const replay = replaySegments(p.segments).at(-1)!
+		p.endTissues.n2.forEach((v, i) => expect(replay.n2[i]).toBeCloseTo(v, 9))
+		p.endTissues.he.forEach((v, i) => expect(replay.he[i]).toBeCloseTo(v, 9))
+	})
+	it('a stop may end mid-break; the break continues through the ascent', () => {
+		const p = planDive({ ...oc, airBreaks: { oc: { onMinutes: 4 } } })
+		expect(p.runtimeMinutes).toBeCloseTo(151.3, 9)
+		const i = p.segments.findIndex((s) => s.kind === 'ascent' && s.airBreak)
+		expect(
+			p.segments
+				.slice(i - 1, i + 3)
+				.map((s) => [
+					s.kind,
+					s.toDepthM,
+					+s.minutes.toFixed(4),
+					s.airBreak ?? false,
+				]),
+		).toEqual([
+			['stop', 6, 3.7, true],
+			['ascent', 3, 0.3, true],
+			['stop', 3, 1, true],
+			['stop', 3, 29.7, false],
+		])
+	})
+	it('no-break-gas when every carried gas is at or above the trigger', () => {
+		const p = planDive({
+			levels: [
+				{ depthM: 30, minutes: 60, breathing: { kind: 'oc', gas: gas(0.4) } },
+			],
+			decoGases: [gas(1)],
+			gfLow: 0.3,
+			gfHigh: 0.7,
+			airBreaks: { oc: { onMinutes: 2, triggerPpo2: 0.5 } },
+		})
+		expect(p.warnings.filter((w) => w.code === 'no-break-gas')).toEqual([
+			{ code: 'no-break-gas', depthM: 9 },
+			{ code: 'no-break-gas', depthM: 6 },
+			{ code: 'no-break-gas', depthM: 3 },
+		])
+		expect(p.segments.some((s) => s.airBreak)).toBe(false)
+	})
+	it('CCR: 5 min at 0.7 every 60 min of deco', () => {
+		const p = planDive({ ...ccr, airBreaks: { ccr: {} } })
+		expect(p.runtimeMinutes).toBeCloseTo(248.3, 9)
+		const breaks = p.segments.filter((s) => s.airBreak)
+		expect(breaks.map((s) => [s.toDepthM, s.minutes])).toEqual([
+			[15, 5],
+			[6, 5],
+			[3, 5],
+		])
+		for (const s of breaks)
+			expect(s.breathing).toEqual({ ...loop, setpoint: 0.7 })
+	})
+	it('OC breaks are ignored on a CCR plan (and vice versa)', () => {
+		expect(planDive({ ...ccr, airBreaks: { oc: {} } }).runtimeMinutes).toBe(
+			planDive(ccr).runtimeMinutes,
+		)
+		expect(planDive({ ...oc, airBreaks: { ccr: {} } }).runtimeMinutes).toBe(
+			planDive(oc).runtimeMinutes,
+		)
+	})
+	it('timeToSurface honours air breaks', () => {
+		const p = planDive(oc)
+		const bottom = p.segments.findIndex((s) => s.kind === 'level')
+		const t = replaySegments(p.segments.slice(0, bottom + 1)).at(-1)!
+		const rules = { decoGases: oc.decoGases, gfLow: 0.4, gfHigh: 0.85 }
+		expect(
+			timeToSurface(t, 60, tmx, {
+				...rules,
+				airBreaks: { oc: { onMinutes: 4 } },
+			}),
+		).toBeGreaterThan(timeToSurface(t, 60, tmx, rules))
+	})
+	it('bailout takes OC breaks on the bailout gases', () => {
+		const input: PlanInput = { ...ccr, airBreaks: { oc: { onMinutes: 4 } } }
+		const b = bailoutPlan(input, {
+			bailoutGases: [gas(0.1, 0.7), gas(0.5), gas(1)],
+			rmvLpm: 20,
+		})
+		const breaks = b.plan.segments.filter((s) => s.airBreak)
+		expect(breaks.length).toBeGreaterThan(0)
+		for (const s of breaks) expect(s.breathing.kind).toBe('oc')
+	})
+	it('stays within the GF ceiling at every stop arrival', () => {
+		for (const roundStops of [true, false])
+			for (const onMinutes of [3, 5, 12])
+				for (const triggerPpo2 of [1.3, 1.5]) {
+					const p = planDive({
+						...oc,
+						roundStops,
+						airBreaks: { oc: { onMinutes, triggerPpo2 } },
+					})
+					const tissues = replaySegments(p.segments)
+					p.segments.forEach((s, i) => {
+						if (s.kind !== 'ascent' || s.phase !== 'resting') return
+						const gf = gfAt(s.toDepthM, p.firstStopM, 0.4, 0.85)
+						expect(toleratedAmbient(tissues[i]!, gf)).toBeLessThanOrEqual(
+							ataAtDepth(s.toDepthM) + 1e-9,
+						)
+					})
+				}
+	})
+	it('breaks only happen during the deco ascent', () => {
+		const ndl = planDive({
+			levels: [
+				{ depthM: 6, minutes: 60, breathing: { kind: 'oc', gas: gas(1) } },
+			],
+			gfLow: 0.4,
+			gfHigh: 0.85,
+			airBreaks: { oc: { onMinutes: 5 } },
+		})
+		expect(ndl.segments.some((s) => s.airBreak)).toBe(false)
+		const p = planDive({ ...oc, airBreaks: { oc: { onMinutes: 4 } } })
+		for (const s of p.segments.filter((x) => x.airBreak))
+			expect(s.phase).toBe('resting')
+	})
+	it('gas use charges break minutes to the break gas', () => {
+		const consumption = { rmvLpm: 20, cylinders: [] }
+		const litres = (p: ReturnType<typeof planDive>) =>
+			p.gasUse!.find((g) => g.gas.fo2 === 0.18)!.litres
+		const a = planDive({ ...oc, consumption })
+		const b = planDive({
+			...oc,
+			consumption,
+			airBreaks: { oc: { triggerPpo2: 1.3 } },
+		})
+		// Two 5 min breaks at 3 m (1.3 ata) at 20 L/min: +260 L of back gas.
+		expect(litres(b) - litres(a)).toBeCloseTo(260, 6)
+	})
+	it('CCR low/high setpoint: no breaks on the low setpoint', () => {
+		const p = planDive({
+			...ccr,
+			levels: [
+				{
+					...ccr.levels[0]!,
+					breathing: {
+						...loop,
+						setpoint: { low: 0.7, high: 1.3, switchDepthM: 6 },
+					},
+				},
+			],
+			airBreaks: { ccr: { onMinutes: 10 } },
+		})
+		const stops = p.segments.filter((s) => s.airBreak && s.kind === 'stop')
+		expect(stops.length).toBeGreaterThan(0)
+		for (const s of stops) expect(s.toDepthM).toBeGreaterThanOrEqual(6)
+	})
+	it('bailout warns when the bailout gases leave no break gas', () => {
+		// 10/70 is hypoxic at 3 m and O₂ is above the 0.5 trigger there.
+		const b = bailoutPlan(
+			{ ...ccr, airBreaks: { oc: { onMinutes: 2, triggerPpo2: 0.5 } } },
+			{ bailoutGases: [gas(0.1, 0.7), gas(1)], rmvLpm: 20 },
+		)
+		expect(b.plan.warnings).toContainEqual({ code: 'no-break-gas', depthM: 3 })
 	})
 })

@@ -2,6 +2,7 @@
  * Multi-level decompression planning (Bühlmann ZH-L16C with Baker GF).
  * @module
  */
+import { resolveAirBreaks, type AirBreaks } from './air-breaks'
 import {
 	assertGas,
 	assertNonNegative,
@@ -84,6 +85,8 @@ export interface PlanInput extends TissueOptions {
 	consumption?: Consumption
 	/** CNS limit set. ['noaa-1991'] */
 	oxygenLimits?: CnsLimits
+	/** Air breaks during decompression. [none] */
+	airBreaks?: AirBreaks
 	/** Earlier dives and surface intervals the same day, for daily warnings. [] */
 	dayExposure?: readonly DayItem[]
 }
@@ -141,6 +144,7 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
 		safetyStop: input.safetyStop ?? false,
 		roundStops: input.roundStops ?? true,
 		oxygenLimits: input.oxygenLimits ?? 'noaa-1991',
+		airBreaks: resolveAirBreaks(input.airBreaks),
 		dayExposure: input.dayExposure ?? [],
 	}
 	if (r.levels.length === 0) throw new RangeError('levels must not be empty')
@@ -378,6 +382,10 @@ export function planDive(input: PlanInput): DivePlan {
 		...bottom.warnings,
 		...[...new Set(up.noBreathableGasAt)].map((depthM) => ({
 			code: 'no-breathable-gas' as const,
+			depthM,
+		})),
+		...[...new Set(up.noBreakGasAt)].map((depthM) => ({
+			code: 'no-break-gas' as const,
 			depthM,
 		})),
 		...(up.truncated ? [{ code: 'deco-too-long' as const }] : []),

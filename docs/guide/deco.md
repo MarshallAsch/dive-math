@@ -86,6 +86,27 @@ Surface tissues start saturated at $(P_{surf} - P_{H_2O}) \times 0.7902$ (N₂ +
 
 `bailoutPlan` evaluates a bailout at the end of every level below the surface and returns the worst bailout point among the ends of the levels (largest bailout gas requirement; ties go to the longer runtime). For each candidate it replays the bottom to that level's end, then ascends on open circuit on `bailoutGases` with gas switches at MOD. The bailout starts on the richest bailout gas within `maxDecoPpo2` at that depth (the leanest, with a `no-breathable-gas` warning, if none is). `bailoutDepthM` and `bailoutRuntimeMinutes` report where and when the chosen bailout starts.
 
+## Air breaks
+
+`airBreaks` schedules periodic breaks onto a lower ppO₂ during decompression. The breaks are run through the tissue model, so stop times grow to make up for them.
+
+```ts
+airBreaks: {
+  oc?:  { onMinutes?: 20, breakMinutes?: 5, triggerPpo2?: 1.4 },
+  ccr?: { onMinutes?: 60, breakMinutes?: 5, triggerSetpoint?: 1.3, breakSetpoint?: 0.7 },
+}
+```
+
+A mode with no key takes no breaks; `{ oc: {} }` turns on open-circuit breaks with the defaults. OC 20/5 is the common technical-diving O₂ break. CCR 60/5 follows the US Navy MK 16 practice described by Hoyt et al. (2025), who recommend periodic five-minute breaks during decompression but prescribe no regimen.
+
+- **The clock** runs only during the deco ascent, while the OC inspired ppO₂ (or the CCR setpoint in force) is at or above the trigger. It carries across stops and gas switches. Below the trigger it pauses; a continuous stretch below the trigger of at least `breakMinutes` counts as a break and resets it.
+- **A break starts** when the clock is full and the stop isn't clear yet.
+- **Break gas.** OC: the leanest carried gas (the gas the ascent started on, plus the deco gases) that is breathable at the depth and below the trigger. CCR: the loop at `breakSetpoint`, bounded by the diluent.
+- **A stop may end mid-break.** The rest of the break is flown through the ascent (those segments are marked `airBreak`) and into the next stop. A break that runs out in transit ends on arrival. The break gas is re-selected at each depth; if none qualifies, the break ends early without resetting the clock.
+- If a break is due but no break gas exists, the plan stays on the normal gas and warns `no-break-gas`.
+
+Break pieces are separate `stop` segments with `airBreak: true`. Each `DecoStop` reports its `breakMinutes`. The stop-time search assumes clearing is monotonic in the wait; switching to a leaner break gas can on-gas fast compartments, so near a boundary the stop found may be slightly longer than the shortest possible one (never shorter).
+
 ## Oxygen exposure
 
 `oxygenLimits` picks the CNS limit set: `'noaa-1991'` (default) or `'hoyt-2025'` (see [oxygen exposure](./oxygen.md)). Descent and level segments are `working`; ascent and stop segments are `resting`. A level's `phase` overrides this for the level and the travel into it.
@@ -104,6 +125,7 @@ Plans never throw for unsafe-but-valid dives; they return `warnings`:
 - `cns-single`: NOAA single-exposure CNS over 100 %; `cns-working` / `cns-resting` under Hoyt 2025;
 - `cns-daily`: this dive plus `dayExposure` over the 24-hour limits;
 - `otu-daily`: this dive plus `dayExposure` over 850 OTU (REPEX day 1);
+- `no-break-gas`: an air break was due at a depth but no break gas was available;
 - `deco-too-long`: more than 24 h of stops. The plan is truncated: it stops at the depth where it was truncated, and `runtimeMinutes` and `gasUse` cover only the planned part.
 
 ## Examples
@@ -123,6 +145,9 @@ baker.runtimeMinutes > 119 && baker.runtimeMinutes < 121 // => true
 const ccr = { levels: [{ depthM: 60, minutes: 25, breathing: { kind: 'ccr' as const, diluent: gas(0.18, 0.45), setpoint: 1.3 } }], gfLow: 0.3, gfHigh: 0.8 }
 bailoutPlan(ccr, { bailoutGases: [gas(0.18, 0.45), gas(0.5), gas(1)], rmvLpm: 20 }).gasRequired.length // => 3
 planDive({ ...ccr, oxygenLimits: 'hoyt-2025' }).oxygen.resting! < 100 // => true
+const tmx = { levels: [{ depthM: 60, minutes: 40, breathing: { kind: 'oc' as const, gas: gas(0.18, 0.45) } }], decoGases: [gas(0.5), gas(1)], gfLow: 0.4, gfHigh: 0.85 }
+planDive(tmx).runtimeMinutes // => 134.3
+planDive({ ...tmx, airBreaks: { oc: { triggerPpo2: 1.3 } } }).runtimeMinutes // => 142.3
 ```
 
 ## Validation
