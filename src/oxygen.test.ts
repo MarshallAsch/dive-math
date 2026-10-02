@@ -73,6 +73,7 @@ describe('dailyExposure', () => {
 			peakCnsPercent: 0,
 			endCnsPercent: 0,
 			totalOtu: 0,
+			daily: { limits: 'noaa-1991', cnsPercent: 0 },
 			perDive: [],
 		}))
 })
