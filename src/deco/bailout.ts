@@ -41,6 +41,8 @@ export interface BailoutResult {
  * (largest bailout gas requirement; tie: longest runtime): replay the bottom
  * to that level's end, then ascend on open circuit on `bailoutGases` (gas
  * switches at MOD). GF and ascent rules come from the plan input.
+ * Runs one full deco ascent per level, so cost grows with `levels.length`;
+ * profiles near `MAX_LEVELS` can take several seconds.
  * @example bailoutPlan(ccrInput, { bailoutGases: [gas(0.21, 0.35), gas(0.5)], rmvLpm: 20 }).plan.runtimeMinutes
  */
 export function bailoutPlan(

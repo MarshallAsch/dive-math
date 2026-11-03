@@ -98,6 +98,8 @@ Gas-switch holds count toward `MAX_DECO_MINUTES` like stops: past it the plan is
 
 `bailoutPlan` evaluates a bailout at the end of every level below the surface and returns the worst bailout point among the ends of the levels (largest bailout gas requirement; ties go to the longer runtime). For each candidate it replays the bottom to that level's end, then ascends on open circuit on `bailoutGases` with gas switches at MOD. The bailout starts on the richest bailout gas within `maxDecoPpo2` at that depth (the leanest, with a `no-breathable-gas` warning, if none is). `bailoutDepthM` and `bailoutRuntimeMinutes` report where and when the chosen bailout starts.
 
+Cost grows with the number of levels: each candidate runs a full open-circuit deco ascent, so `bailoutPlan` is roughly one `planDive` per level. A few levels returns in milliseconds; profiles near the `MAX_LEVELS` cap (1000 deep CCR levels) can take several seconds. It is synchronous, so in a UI run it off the main thread (e.g. in a Web Worker) for long multi-level profiles.
+
 ## Air breaks
 
 `airBreaks` schedules periodic breaks onto a lower ppO₂ during decompression. The breaks are run through the tissue model, so stop times grow to make up for them.
