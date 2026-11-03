@@ -234,6 +234,11 @@ export function ascend(
 				if (rules.switchMinutes > 0) hold(rules.switchMinutes)
 			}
 		}
+		// Switch holds count toward MAX_DECO_MINUTES too.
+		if (decoMinutes > MAX_DECO_MINUTES) {
+			truncated = true
+			break
+		}
 		const n = nextStopDepth(d, rules.stopInterval, rules.lastStopM)
 		const travel = (d - n) / rules.ascentRate
 		const clearAfter = (waitMin: number): boolean => {

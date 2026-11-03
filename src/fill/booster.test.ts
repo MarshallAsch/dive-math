@@ -6,6 +6,7 @@ import {
 	booster,
 	boosterFillProfile,
 	boosterTiming,
+	MAX_PROFILE_STEPS,
 	type BoosterInput,
 	type TimingArgs,
 } from './booster'
@@ -410,9 +411,16 @@ describe('booster input guards', () => {
 		))
 	it('boosterTiming still returns null for zero ratio', () =>
 		expect(boosterTiming({ ...timing, ratio: 0 })).toBeNull())
-	it.each([0, 1.5, -1, NaN])('boosterFillProfile rejects steps = %s', (v) =>
-		expect(() => boosterFillProfile(base, v)).toThrow(/steps/),
+	it.each([0, 1.5, -1, NaN, MAX_PROFILE_STEPS + 1, 1e9])(
+		'boosterFillProfile rejects steps = %s',
+		(v) => expect(() => boosterFillProfile(base, v)).toThrow(/steps/),
 	)
+	it('boosterFillProfile accepts MAX_PROFILE_STEPS', () => {
+		expect(MAX_PROFILE_STEPS).toBe(10_000)
+		expect(boosterFillProfile(base, MAX_PROFILE_STEPS)).toHaveLength(
+			MAX_PROFILE_STEPS + 1,
+		)
+	})
 })
 
 describe('booster real-gas equalisation conserves moles', () => {

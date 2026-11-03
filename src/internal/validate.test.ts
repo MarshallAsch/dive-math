@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+	assertAtLeast,
+	assertAtMost,
 	assertFinite,
 	assertFraction,
 	assertGas,
@@ -31,6 +33,25 @@ describe('assertPositive', () => {
 		expect(() => assertPositive('x', 1e-12)).not.toThrow())
 	it('rejects 0', () =>
 		expect(() => assertPositive('x', 0)).toThrow(RangeError))
+})
+
+describe('assertAtLeast / assertAtMost', () => {
+	it('accept the bound itself', () => {
+		expect(() => assertAtLeast('x', 0.1, 0.1)).not.toThrow()
+		expect(() => assertAtMost('x', 1000, 1000)).not.toThrow()
+	})
+	it('reject values past the bound with the name', () => {
+		expect(() => assertAtLeast('rate', 0.09, 0.1)).toThrow(
+			/rate must be >= 0.1/,
+		)
+		expect(() => assertAtMost('depthM', 1001, 1000)).toThrow(
+			/depthM must be <= 1000/,
+		)
+	})
+	it('reject NaN', () => {
+		expect(() => assertAtLeast('x', NaN, 0)).toThrow(RangeError)
+		expect(() => assertAtMost('x', NaN, 0)).toThrow(RangeError)
+	})
 })
 
 describe('assertFraction', () => {

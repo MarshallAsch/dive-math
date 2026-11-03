@@ -4,6 +4,8 @@
  */
 import { resolveAirBreaks, type AirBreaks } from './air-breaks'
 import {
+	assertAtLeast,
+	assertAtMost,
 	assertGas,
 	assertNonNegative,
 	assertPositive,
@@ -19,6 +21,7 @@ import { ataAtDepth } from '../pressure'
 import type { Gas } from '../types'
 import {
 	ascend,
+	MAX_DECO_MINUTES,
 	type AscentRules,
 	type DecoStop,
 	type PlannedSegment,
@@ -43,6 +46,16 @@ import {
 	type Tissues,
 } from './tissues'
 
+// Library guards (no source): beyond any dive and they bound the planner's work.
+/** Most `levels` a plan accepts. */
+export const MAX_LEVELS = 1000
+/** Deepest `Level.depthM` (and `timeToSurface` depth) accepted, m. */
+export const MAX_DEPTH_M = 1000
+/** Slowest `ascentRate` / `descentRate` accepted, m/min. */
+export const MIN_RATE_M_PER_MIN = 0.1
+/** Smallest `stopInterval` accepted, m. */
+export const MIN_STOP_INTERVAL_M = 0.1
+
 /** A level of the bottom profile: time at depth after arriving there. */
 export interface Level {
 	readonly depthM: number
@@ -56,16 +69,17 @@ export interface Level {
 
 /** Inputs to {@link planDive}. Defaults in brackets. */
 export interface PlanInput extends TissueOptions {
+	/** 1 to {@link MAX_LEVELS} levels, each at most {@link MAX_DEPTH_M} deep. */
 	levels: readonly Level[]
 	/** Open-circuit deco gases, switched at MOD (ignored on CCR). [] */
 	decoGases?: readonly Gas[]
 	gfLow: number
 	gfHigh: number
-	/** m/min. [20] */
+	/** m/min, at least {@link MIN_RATE_M_PER_MIN}. [20] */
 	descentRate?: number
-	/** m/min. [10] */
+	/** m/min, at least {@link MIN_RATE_M_PER_MIN}. [10] */
 	ascentRate?: number
-	/** m. [3] */
+	/** m, at least {@link MIN_STOP_INTERVAL_M}. [3] */
 	stopInterval?: number
 	/** m, a multiple of `stopInterval`. [3] */
 	lastStopM?: number
@@ -73,7 +87,7 @@ export interface PlanInput extends TissueOptions {
 	maxDecoPpo2?: number
 	/** ata. [1.4] */
 	maxBottomPpo2?: number
-	/** Minutes held at each OC gas switch. [0] */
+	/** Minutes held at each OC gas switch, at most MAX_DECO_MINUTES. [0] */
 	switchMinutes?: number
 	/** 3 min at 5 m on no-decompression dives. [false] */
 	safetyStop?: boolean
@@ -148,8 +162,13 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
 		dayExposure: input.dayExposure ?? [],
 	}
 	if (r.levels.length === 0) throw new RangeError('levels must not be empty')
+	if (r.levels.length > MAX_LEVELS)
+		throw new RangeError(
+			`levels must have at most ${MAX_LEVELS} entries (got ${r.levels.length})`,
+		)
 	r.levels.forEach((l, i) => {
 		assertNonNegative(`levels[${i}].depthM`, l.depthM)
+		assertAtMost(`levels[${i}].depthM`, l.depthM, MAX_DEPTH_M)
 		assertNonNegative(`levels[${i}].minutes`, l.minutes)
 		assertBreathing(l.breathing, `levels[${i}].breathing`)
 		if (l.phase !== undefined && l.phase !== 'working' && l.phase !== 'resting')
@@ -163,9 +182,9 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
 	assertGf('gfHigh', r.gfHigh)
 	if (r.gfLow > r.gfHigh)
 		throw new RangeError(`gfLow (${r.gfLow}) must be <= gfHigh (${r.gfHigh})`)
-	assertPositive('descentRate', r.descentRate)
-	assertPositive('ascentRate', r.ascentRate)
-	assertPositive('stopInterval', r.stopInterval)
+	assertAtLeast('descentRate', r.descentRate, MIN_RATE_M_PER_MIN)
+	assertAtLeast('ascentRate', r.ascentRate, MIN_RATE_M_PER_MIN)
+	assertAtLeast('stopInterval', r.stopInterval, MIN_STOP_INTERVAL_M)
 	assertPositive('lastStopM', r.lastStopM)
 	const k = r.lastStopM / r.stopInterval
 	if (Math.abs(k - Math.round(k)) > 1e-9) {
@@ -176,6 +195,7 @@ export function resolvePlanInput(input: PlanInput): ResolvedPlanInput {
 	assertPositive('maxDecoPpo2', r.maxDecoPpo2)
 	assertPositive('maxBottomPpo2', r.maxBottomPpo2)
 	assertNonNegative('switchMinutes', r.switchMinutes)
+	assertAtMost('switchMinutes', r.switchMinutes, MAX_DECO_MINUTES)
 	if (
 		r.startTissues &&
 		(r.startTissues.n2.length !== 16 || r.startTissues.he.length !== 16)
@@ -207,10 +227,13 @@ export function bottomSegments(r: ResolvedPlanInput): {
 	segments: SegmentDraft[]
 	tissues: Tissues[]
 	warnings: PlanWarning[]
+	/** `segments.length` after each level. */
+	levelEnds: number[]
 } {
 	const segments: SegmentDraft[] = []
 	const tissues: Tissues[] = []
 	const warnings: PlanWarning[] = []
+	const levelEnds: number[] = []
 	let t = r.startTissues ?? initialTissues(r)
 	let depth = 0
 	let rt = 0
@@ -268,8 +291,9 @@ export function bottomSegments(r: ResolvedPlanInput): {
 			)
 		if (level.minutes > 0)
 			add('level', level.depthM, level.minutes, level.breathing, phase)
+		levelEnds.push(segments.length)
 	}
-	return { segments, tissues, warnings }
+	return { segments, tissues, warnings, levelEnds }
 }
 
 /**

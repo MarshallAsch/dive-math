@@ -21,6 +21,25 @@ const input: PlanInput = {
 const bailoutGases = [gas(0.18, 0.45), gas(0.5), gas(1)]
 
 describe('bailoutPlan', () => {
+	it('keeps only the bottom warnings up to the bailout point', () => {
+		// The 80 → 6 m ascent between levels violates the ceiling.
+		const levels = [
+			{ depthM: 80, minutes: 40, breathing: loop },
+			{ depthM: 6, minutes: 1, breathing: loop },
+		]
+		const bottomOnly = planDive({ ...input, levels })
+		expect(bottomOnly.warnings.map((w) => w.code)).toContain('ceiling-violated')
+		for (const at of [1, 2]) {
+			const b = bailoutPlan(
+				{ ...input, levels: levels.slice(0, at) },
+				{ bailoutGases, rmvLpm: 20 },
+			)
+			const violated = b.plan.warnings.some(
+				(w) => w.code === 'ceiling-violated',
+			)
+			expect(violated).toBe(b.bailoutDepthM === 6)
+		}
+	})
 	const b = bailoutPlan(input, { bailoutGases, rmvLpm: 20, stressFactor: 1.5 })
 	// Every level end is a candidate; for this profile the 60 m end still needs
 	// the most bailout gas (~3830 L vs ~3520 L at the 40 m end, which has the

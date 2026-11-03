@@ -52,6 +52,7 @@ $$P_{cold} = P_{hot}\,\frac{T_{cold}}{T_{hot}}$$
 - Pressures are gauge bar in inputs and results, except `boosterTiming`'s `supplyAbsBar`, which is absolute. The math converts to absolute internally.
 - The real-gas cascade and booster equalisation are exact mole balances within the virial Z model. The booster drive-air integral and `boosterTiming` gas-per-cycle use Z at the local pressure.
 - `boosterTiming` returns `null` when the booster geometry or fill-rate limit is missing.
+- `boosterFillProfile` takes `steps` (intervals, default 40) as an integer from 1 to 10 000 (`MAX_PROFILE_STEPS`).
 - A fill that cannot be done is returned as `feasible: false` with a reason (`exceeds-stall` or `supply-insufficient`), never thrown.
 - Gay-Lussac assumes a fixed cylinder volume and a settled temperature you supply.
 

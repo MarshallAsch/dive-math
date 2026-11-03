@@ -73,11 +73,11 @@ const CCR_DEFAULTS = {
 	breakSetpoint: 0.7,
 }
 /**
- * Shortest `onMinutes` / `breakMinutes` accepted: one second, in minutes.
- * A library guard (no source): smaller values make the clock loop for no
- * practical effect.
+ * Shortest `onMinutes` / `breakMinutes` accepted, minutes. A library guard
+ * (no source): shorter clocks have no practical use and multiply the stop
+ * pieces the ascent search must model.
  */
-export const MIN_BREAK_CLOCK_MINUTES = 1 / 60
+export const MIN_BREAK_CLOCK_MINUTES = 1
 // Float tolerance on minutes and ppO₂ comparisons.
 const EPS = 1e-9
 
@@ -99,7 +99,7 @@ function assertClockMinutes(name: string, value: number): void {
 	assertPositive(name, value)
 	if (value < MIN_BREAK_CLOCK_MINUTES - EPS)
 		throw new RangeError(
-			`${name} must be at least ${MIN_BREAK_CLOCK_MINUTES} min (one second; got ${value})`,
+			`${name} must be at least ${MIN_BREAK_CLOCK_MINUTES} min (got ${value})`,
 		)
 }
 

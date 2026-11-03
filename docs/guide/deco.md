@@ -78,6 +78,18 @@ Surface tissues start saturated at $(P_{surf} - P_{H_2O}) \times 0.7902$ (N₂ +
 
 `Level.minutes` is the time **at** depth, after the descent or ascent to it.
 
+Input limits (library guards that bound the planner's work; out-of-range values throw `RangeError`, in `planDive`, `timeToSurface` and `bailoutPlan` alike):
+
+| Input                        | Limit                                     |
+| ---------------------------- | ----------------------------------------- |
+| `levels`                     | 1 to 1000 entries (`MAX_LEVELS`)          |
+| `Level.depthM`               | 0 to 1000 m (`MAX_DEPTH_M`)               |
+| `descentRate` / `ascentRate` | at least 0.1 m/min (`MIN_RATE_M_PER_MIN`) |
+| `stopInterval`               | at least 0.1 m (`MIN_STOP_INTERVAL_M`)    |
+| `switchMinutes`              | 0 to 1440 min (`MAX_DECO_MINUTES`)        |
+
+Gas-switch holds count toward `MAX_DECO_MINUTES` like stops: past it the plan is truncated with `deco-too-long`.
+
 - With `surfacePressure: 1.01325`, 6 m is 1.613 ata, so O₂ is not selected at 6 m unless `maxDecoPpo2` ≥ ~1.62.
 - `ndl()` excludes off-gassing during the ascent, so it is stricter than the planner's direct-ascent no-stop check.
 - CCR diluent flush: when the setpoint is below the diluent's ppO₂, the loop's ppO₂ is the diluent's, taken as $f_{O_2} \cdot P_{amb}$; the model's inert pressure is then $f_{O_2} \cdot P_{H_2O}$ lower than breathing the diluent on open circuit: about 0.013 bar for air (≈ 0.5 % of the inert pressure where the flush starts), rising with the diluent's O₂ (≈ 1.4 % for EAN32, ≈ 4.7 % for a 50 % diluent at a 0.7 setpoint). This makes the model slightly less conservative in that regime.
@@ -97,7 +109,7 @@ airBreaks: {
 }
 ```
 
-A mode with no key takes no breaks; `{ oc: {} }` turns on open-circuit breaks with the defaults, and a field left `undefined` keeps its default. `onMinutes` and `breakMinutes` must be at least one second (1/60 min). OC 20/5 is the common technical-diving O₂ break. CCR 60/5 follows the US Navy MK 16 practice described by Hoyt et al. (2025), who recommend periodic five-minute breaks during decompression at "an inspired PO₂ equivalent to breathing air at the same depth" but prescribe no regimen. The 1.4 OC trigger, 1.3 CCR trigger and 0.7 break setpoint are conventions chosen for this library.
+A mode with no key takes no breaks; `{ oc: {} }` turns on open-circuit breaks with the defaults, and a field left `undefined` keeps its default. `onMinutes` and `breakMinutes` must be at least one minute (`MIN_BREAK_CLOCK_MINUTES`). OC 20/5 is the common technical-diving O₂ break. CCR 60/5 follows the US Navy MK 16 practice described by Hoyt et al. (2025), who recommend periodic five-minute breaks during decompression at "an inspired PO₂ equivalent to breathing air at the same depth" but prescribe no regimen. The 1.4 OC trigger, 1.3 CCR trigger and 0.7 break setpoint are conventions chosen for this library.
 
 - **The clock** runs only during the deco ascent, while the OC inspired ppO₂ (or the CCR setpoint in force) is at or above the trigger. It carries across stops and gas switches. Below the trigger it pauses; a continuous stretch below the trigger of at least `breakMinutes` counts as a break and resets it.
 - **A break starts** when the clock is full and the stop isn't clear yet.

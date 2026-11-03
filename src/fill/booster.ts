@@ -400,9 +400,12 @@ export function boosterTiming(args: TimingArgs): BoosterTiming | null {
 	}
 }
 
+/** Most `steps` {@link boosterFillProfile} accepts (a library guard on output size). */
+export const MAX_PROFILE_STEPS = 10_000
+
 /**
  * Sample receiver pressure, cumulative drive air and supply pressure across a booster fill.
- * `steps` (intervals, default 40) must be an integer ≥ 1.
+ * `steps` (intervals, default 40) must be an integer from 1 to {@link MAX_PROFILE_STEPS}.
  * @example boosterFillProfile({ ratio: 40, driveP: 8, supplyVol: 50, supplyStart: 150, receiverVol: 11.1, receiverStart: 0, target: 200 }, 10).length // 11
  */
 export function boosterFillProfile(
@@ -410,8 +413,10 @@ export function boosterFillProfile(
 	steps = 40,
 	timing?: TimingArgs,
 ): ProfilePoint[] {
-	if (!Number.isInteger(steps) || steps < 1) {
-		throw new RangeError(`steps must be an integer >= 1 (got ${steps})`)
+	if (!Number.isInteger(steps) || steps < 1 || steps > MAX_PROFILE_STEPS) {
+		throw new RangeError(
+			`steps must be an integer 1–${MAX_PROFILE_STEPS} (got ${steps})`,
+		)
 	}
 	const { ratio, supplyVol: vs, receiverVol: vr, receiverStart, target } = input
 	const { boostStartReceiver, inletStartAbs } = boostSetup(input)

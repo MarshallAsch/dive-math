@@ -3,6 +3,7 @@ import {
 	CNS_DAILY_TABLE,
 	REPEX_TABLE,
 	cnsLimitMinutes,
+	cnsRunningTotals,
 	cnsTotals,
 	dailyExposure,
 	repex,
@@ -163,6 +164,53 @@ describe('cnsTotals', () => {
 			100,
 			12,
 		))
+})
+
+describe('cnsRunningTotals', () => {
+	const exposures = [
+		{ ppo2: 1.4, minutes: 20, phase: 'working' as const },
+		{ ppo2: 1.2, minutes: 30, phase: 'working' as const },
+		{ ppo2: 1.6, minutes: 10, phase: 'resting' as const },
+		{ ppo2: 1.3, minutes: 50, phase: 'resting' as const },
+		{ ppo2: 0.5, minutes: 30 },
+	]
+	it.each([
+		['noaa-1991', false],
+		['hoyt-2025', false],
+		['noaa-1991', true],
+		['hoyt-2025', true],
+	] as const)(
+		'%s (daily %s): each entry is cnsTotals of the prefix',
+		(limits, daily) => {
+			const running = cnsRunningTotals(exposures, { limits, daily })
+			expect(running).toHaveLength(exposures.length)
+			running.forEach((t, i) =>
+				expect(t).toEqual(
+					cnsTotals(exposures.slice(0, i + 1), { limits, daily }),
+				),
+			)
+		},
+	)
+	it('no exposures: empty, and cnsTotals is zero', () => {
+		expect(cnsRunningTotals([])).toEqual([])
+		expect(cnsTotals([])).toEqual({ limits: 'noaa-1991', cnsPercent: 0 })
+		expect(cnsTotals([], { limits: 'hoyt-2025' })).toEqual({
+			limits: 'hoyt-2025',
+			cnsPercent: 0,
+			working: 0,
+			resting: 0,
+		})
+	})
+	it('validates like cnsTotals', () => {
+		expect(() => cnsRunningTotals([], { limits: 'x' as never })).toThrow(
+			RangeError,
+		)
+		expect(() =>
+			cnsRunningTotals([{ ppo2: 1, minutes: 1, phase: 'x' as never }], {
+				limits: 'hoyt-2025',
+			}),
+		).toThrow(/phase/)
+	})
 })
 
 describe('dailyExposure daily totals', () => {

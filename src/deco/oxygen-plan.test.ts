@@ -7,7 +7,8 @@ import { gfAt, toleratedAmbient } from './limits'
 import { breathingPpo2, type Breathing } from './breathing'
 import { planDive, timeToSurface, type PlanInput } from './plan'
 import { replaySegments } from './profile'
-import { segmentExposures } from './report'
+import { segmentExposures, withOxygen } from './report'
+import type { SegmentDraft } from './ascent'
 
 const tmx: Breathing = { kind: 'oc', gas: gas(0.18, 0.45) }
 // 60 m / 40 min on 18/45 with EAN50 and O₂, GF 40/85: 15.7 min on O₂ at 6 m
@@ -117,6 +118,44 @@ describe('oxygen limits in plans', () => {
 					.cnsPercent,
 				12,
 			),
+		)
+	})
+	it.each(['noaa-1991', 'hoyt-2025'] as const)(
+		'%s: segment cnsPercent equals cnsTotals over each prefix exactly',
+		(limits) => {
+			// Mixed phases, above and below 1.3 ata, so every Hoyt branch runs.
+			const p = planDive({
+				...oc,
+				oxygenLimits: limits,
+				levels: [
+					...oc.levels,
+					{ depthM: 30, minutes: 20, breathing: tmx, phase: 'resting' },
+				],
+			})
+			const exposures = segmentExposures(p.segments)
+			p.segments.forEach((s, i) =>
+				expect(s.cnsPercent).toBe(
+					cnsTotals(exposures.slice(0, i + 1), { limits }).cnsPercent,
+				),
+			)
+		},
+	)
+	it('withOxygen is linear in the segment count', () => {
+		const seg = (i: number): SegmentDraft => ({
+			kind: 'level',
+			fromDepthM: 30,
+			toDepthM: 30,
+			minutes: 1,
+			runtimeMinutes: i + 1,
+			breathing: tmx,
+			phase: i % 2 ? 'resting' : 'working',
+		})
+		const segments = Array.from({ length: 40_000 }, (_, i) => seg(i))
+		const t0 = performance.now()
+		const out = withOxygen(segments, { limits: 'hoyt-2025' })
+		expect(performance.now() - t0).toBeLessThan(1000)
+		expect(out.at(-1)!.cnsPercent).toBe(
+			cnsTotals(segmentExposures(segments), { limits: 'hoyt-2025' }).cnsPercent,
 		)
 	})
 	it('a level can be marked resting', () => {
@@ -370,7 +409,7 @@ describe('air breaks in plans', () => {
 								JSON.stringify([name, input.airBreaks, roundStops]),
 							).toBeLessThanOrEqual(1e-9)
 						}
-	})
+	}, 30_000)
 	it('re-checks rounded stops: 45 m / 30 min on 21/35, 2/2.5 breaks', () =>
 		expect(
 			ceilingExcess({

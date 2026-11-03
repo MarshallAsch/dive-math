@@ -6,7 +6,7 @@
 import { assertGas, assertPositive } from '../internal/validate'
 import { ataAtDepth } from '../pressure'
 import type { Gas } from '../types'
-import { ascend } from './ascent'
+import { ascend, type AscentResult, type SegmentDraft } from './ascent'
 import {
 	bottomSegments,
 	finishPlan,
@@ -16,6 +16,7 @@ import {
 	type ResolvedPlanInput,
 } from './plan'
 import { gasUse, type PlanWarning } from './report'
+import type { Tissues } from './tissues'
 
 /** Bailout inputs. `stressFactor` scales the RMV for the gas estimate. */
 export interface BailoutInput {
@@ -54,36 +55,67 @@ export function bailoutPlan(
 	assertPositive('stressFactor', stress)
 
 	const r = resolvePlanInput(input)
-	const total = (b: BailoutResult) =>
+	// Replay the bottom once; each candidate uses the prefix ending at its level.
+	const bottom = bottomSegments(r)
+	const total = (b: Candidate) =>
 		b.gasRequired.reduce((s, g) => s + g.litres, 0)
-	let worst: BailoutResult | undefined
+	let worst: Candidate | undefined
 	r.levels.forEach((level, i) => {
 		if (level.depthM <= 0) return
-		const b = bailAt(r, i, bailout.bailoutGases, bailout.rmvLpm * stress)
+		const b = bailAt(
+			r,
+			bottom,
+			i,
+			bailout.bailoutGases,
+			bailout.rmvLpm * stress,
+		)
 		if (
 			!worst ||
 			total(b) > total(worst) ||
 			(total(b) === total(worst) &&
-				b.plan.runtimeMinutes > worst.plan.runtimeMinutes)
+				b.up.runtimeMinutes > worst.up.runtimeMinutes)
 		)
 			worst = b
 	})
 	if (!worst)
 		throw new RangeError('bailoutPlan needs a level below the surface')
-	return worst
+	// Reports only for the chosen candidate.
+	const { up, bottomSegs, warnings, gasRequired, depthM } = worst
+	const plan = finishPlan(r, {
+		segments: [...bottomSegs, ...up.segments],
+		stops: up.stops,
+		endTissues: up.tissues,
+		firstStopM: up.firstStopM,
+		warnings,
+	})
+	return {
+		plan,
+		gasRequired,
+		bailoutDepthM: depthM,
+		bailoutRuntimeMinutes: worst.bailoutRuntimeMinutes,
+	}
+}
+
+interface Candidate {
+	up: AscentResult
+	bottomSegs: SegmentDraft[]
+	warnings: PlanWarning[]
+	gasRequired: BailoutResult['gasRequired']
+	depthM: number
+	bailoutRuntimeMinutes: number
 }
 
 // Bail out at the end of level `index` and ascend on open circuit.
 function bailAt(
 	r: ResolvedPlanInput,
+	bottom: ReturnType<typeof bottomSegments>,
 	index: number,
 	bailoutGases: readonly Gas[],
 	rmvLpm: number,
-): BailoutResult {
-	const bottom = bottomSegments({
-		...r,
-		levels: r.levels.slice(0, index + 1),
-	})
+): Candidate {
+	// A level below the surface always ends at least one segment.
+	const end = bottom.levelEnds[index] as number
+	const bottomSegs = bottom.segments.slice(0, end)
 	const depthM = r.levels[index].depthM
 	const p = ataAtDepth(depthM, r)
 	const breathable = bailoutGases.filter(
@@ -94,13 +126,16 @@ function bailAt(
 	const startGas = breathable.length
 		? breathable.reduce((a, b) => (b.fo2 > a.fo2 ? b : a))
 		: byO2[0]
-	const warnings: PlanWarning[] = [...bottom.warnings]
-	const bailoutRuntimeMinutes =
-		bottom.segments[bottom.segments.length - 1].runtimeMinutes
+	const warnings: PlanWarning[] = bottom.warnings.filter(
+		// Bottom warnings are all segment warnings (ceiling-violated).
+		(w) => (w as { segmentIndex: number }).segmentIndex < end,
+	)
+	const bailoutRuntimeMinutes = (bottomSegs[end - 1] as SegmentDraft)
+		.runtimeMinutes
 
 	const up = ascend(
 		{
-			tissues: bottom.tissues[bottom.tissues.length - 1],
+			tissues: bottom.tissues[end - 1] as Tissues,
 			depthM,
 			runtimeMinutes: bailoutRuntimeMinutes,
 			breathing: { kind: 'oc', gas: startGas },
@@ -126,15 +161,15 @@ function bailAt(
 	)
 	if (up.truncated) warnings.push({ code: 'deco-too-long' })
 
-	const plan = finishPlan(r, {
-		segments: [...bottom.segments, ...up.segments],
-		stops: up.stops,
-		endTissues: up.tissues,
-		firstStopM: up.firstStopM,
-		warnings,
-	})
 	const gasRequired = gasUse(up.segments, { rmvLpm, cylinders: [] }, r).map(
 		({ gas, litres }) => ({ gas, litres }),
 	)
-	return { plan, gasRequired, bailoutDepthM: depthM, bailoutRuntimeMinutes }
+	return {
+		up,
+		bottomSegs,
+		warnings,
+		gasRequired,
+		depthM,
+		bailoutRuntimeMinutes,
+	}
 }

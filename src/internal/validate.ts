@@ -19,6 +19,18 @@ export function assertPositive(name: string, value: number): void {
 	if (value <= 0) throw new RangeError(`${name} must be > 0 (got ${value})`)
 }
 
+export function assertAtLeast(name: string, value: number, min: number): void {
+	assertFinite(name, value)
+	if (value < min)
+		throw new RangeError(`${name} must be >= ${min} (got ${value})`)
+}
+
+export function assertAtMost(name: string, value: number, max: number): void {
+	assertFinite(name, value)
+	if (value > max)
+		throw new RangeError(`${name} must be <= ${max} (got ${value})`)
+}
+
 export function assertFraction(name: string, value: number): void {
 	assertFinite(name, value)
 	if (value < 0 || value > 1 + FRACTION_EPSILON) {

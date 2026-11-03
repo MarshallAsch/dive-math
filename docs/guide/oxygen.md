@@ -79,7 +79,7 @@ $$CNS(t) = CNS_0 \cdot 0.5^{\,t/90}$$
 
 <!-- prettier-ignore -->
 ```ts example
-import { cnsLimitMinutes, cnsTotals, segmentOtu, dailyExposure, repex } from 'dive-math/oxygen'
+import { cnsLimitMinutes, cnsTotals, cnsRunningTotals, segmentOtu, dailyExposure, repex } from 'dive-math/oxygen'
 cnsLimitMinutes(1.4) // => 150
 segmentOtu({ ppo2: 1.4, minutes: 30 }) // => 48.86
 dailyExposure([{ type: 'dive', ppo2: 1.4, minutes: 30 }, { type: 'surface', minutes: 90 }]).endCnsPercent // => 10
@@ -89,6 +89,7 @@ cnsTotals([{ ppo2: 1.3, minutes: 240, phase: 'working' }, { ppo2: 1.3, minutes: 
 cnsTotals([{ ppo2: 1.4, minutes: 150, phase: 'working' }, { ppo2: 1.4, minutes: 150, phase: 'resting' }], { limits: 'hoyt-2025' }).cnsPercent // => 200
 cnsTotals([{ ppo2: 1.0, minutes: 300, phase: 'working' }, { ppo2: 1.0, minutes: 300, phase: 'resting' }], { limits: 'hoyt-2025' }).cnsPercent // => 125
 cnsTotals([{ ppo2: 1.0, minutes: 280, phase: 'working' }], { limits: 'hoyt-2025' }).cnsPercent // => 93.33
+cnsRunningTotals([{ ppo2: 1.4, minutes: 30 }, { ppo2: 1.4, minutes: 30 }]).map((t) => t.cnsPercent) // => [20, 40]
 repex([800, 700]).exceeded // => true
 ```
 

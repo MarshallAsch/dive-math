@@ -9,6 +9,7 @@ import {
 	RECOMMENDED_MAX_DENSITY,
 } from '../density'
 import {
+	cnsRunningTotals,
 	cnsTotals,
 	dailyExposure,
 	repexAllowance,
@@ -126,13 +127,12 @@ export function withOxygen(
 	segments: readonly SegmentDraft[],
 	opts?: OxygenOptions,
 ): PlannedSegment[] {
-	const limits = opts?.limits
 	const exposures = segmentExposures(segments, opts)
+	const cns = cnsRunningTotals(exposures, { limits: opts?.limits })
 	let otu = 0
 	return segments.map((s, i) => {
 		otu += segmentOtu(exposures[i] as Exposure)
-		// O(n²) over ~100 segments; reusing cnsTotals keeps the rule in one place.
-		const { cnsPercent } = cnsTotals(exposures.slice(0, i + 1), { limits })
+		const { cnsPercent } = cns[i] as CnsTotals
 		return { ...s, cnsPercent, otu }
 	})
 }

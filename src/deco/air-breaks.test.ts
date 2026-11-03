@@ -4,6 +4,7 @@ import {
 	arriveClock,
 	breakBreathingAt,
 	CLOCK_START,
+	MIN_BREAK_CLOCK_MINUTES,
 	resolveAirBreaks,
 	runClock,
 	travelClock,
@@ -47,23 +48,24 @@ describe('resolveAirBreaks', () => {
 			/breakSetpoint/,
 		)
 	})
-	it('rejects minutes below one second', () => {
+	it('rejects minutes below one minute', () => {
+		expect(MIN_BREAK_CLOCK_MINUTES).toBe(1)
 		expect(() => resolveAirBreaks({ oc: { onMinutes: 1e-9 } })).toThrow(
 			/airBreaks\.oc\.onMinutes/,
 		)
-		expect(() => resolveAirBreaks({ oc: { breakMinutes: 0.01 } })).toThrow(
+		expect(() => resolveAirBreaks({ oc: { breakMinutes: 1 / 60 } })).toThrow(
 			/airBreaks\.oc\.breakMinutes/,
 		)
-		expect(() => resolveAirBreaks({ ccr: { onMinutes: 0.01 } })).toThrow(
+		expect(() => resolveAirBreaks({ ccr: { onMinutes: 0.99 } })).toThrow(
 			/airBreaks\.ccr\.onMinutes/,
 		)
-		expect(() => resolveAirBreaks({ ccr: { breakMinutes: 1e-6 } })).toThrow(
+		expect(() => resolveAirBreaks({ ccr: { breakMinutes: 0.5 } })).toThrow(
 			/airBreaks\.ccr\.breakMinutes/,
 		)
 		expect(
-			resolveAirBreaks({ oc: { onMinutes: 1 / 60, breakMinutes: 1 / 60 } })?.oc
+			resolveAirBreaks({ oc: { onMinutes: 1, breakMinutes: 1 } })?.oc
 				?.onMinutes,
-		).toBe(1 / 60)
+		).toBe(1)
 	})
 	it('explicit undefined fields take the defaults', () =>
 		expect(

@@ -2,9 +2,18 @@ import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import reference from '../../test/fixtures/reference/schedules.json'
 import { AIR, gas } from '../gas'
-import { nextStopDepth } from './ascent'
+import { MAX_DECO_MINUTES, nextStopDepth } from './ascent'
 import type { Breathing } from './breathing'
-import { planDive, timeToSurface, type PlanInput } from './plan'
+import { bailoutPlan } from './bailout'
+import {
+	MAX_DEPTH_M,
+	MAX_LEVELS,
+	MIN_RATE_M_PER_MIN,
+	MIN_STOP_INTERVAL_M,
+	planDive,
+	timeToSurface,
+	type PlanInput,
+} from './plan'
 import { replaySegments } from './profile'
 import { surfaceInterval } from './tissues'
 
@@ -326,6 +335,69 @@ describe('input validation', () => {
 	])('%s throws RangeError', (_n, input) =>
 		expect(() => planDive(input as PlanInput)).toThrow(RangeError),
 	)
+	it('exports the input limits', () => {
+		expect(MAX_LEVELS).toBe(1000)
+		expect(MAX_DEPTH_M).toBe(1000)
+		expect(MIN_RATE_M_PER_MIN).toBe(0.1)
+		expect(MIN_STOP_INTERVAL_M).toBe(0.1)
+	})
+	const lv = (depthM: number) => ({ depthM, minutes: 1, breathing: AIR_OC })
+	it.each([
+		['levels', { ...ok, levels: Array(1001).fill(lv(10)) }, /levels/],
+		['levels[1].depthM', { ...ok, levels: [lv(10), lv(1000.5)] }, /depthM/],
+		['ascentRate', { ...ok, ascentRate: 1e-300 }, /ascentRate/],
+		['descentRate', { ...ok, descentRate: 0.09 }, /descentRate/],
+		[
+			'stopInterval',
+			{ ...ok, stopInterval: 1e-4, lastStopM: 3 },
+			/stopInterval/,
+		],
+		['switchMinutes', { ...ok, switchMinutes: 1e12 }, /switchMinutes/],
+	] as const)('rejects out-of-range %s', (_n, input, msg) => {
+		expect(() => planDive(input as PlanInput)).toThrow(RangeError)
+		expect(() => planDive(input as PlanInput)).toThrow(msg)
+	})
+	it('accepts the limits themselves', () => {
+		expect(() =>
+			planDive({
+				...ok,
+				levels: [...Array(MAX_LEVELS - 1).fill(lv(10)), lv(30)],
+				ascentRate: MIN_RATE_M_PER_MIN * 100,
+				descentRate: MIN_RATE_M_PER_MIN * 100,
+				stopInterval: MIN_STOP_INTERVAL_M * 30,
+				switchMinutes: MAX_DECO_MINUTES,
+			}),
+		).not.toThrow()
+		expect(() =>
+			planDive({ ...ok, levels: [{ ...lv(MAX_DEPTH_M), minutes: 0 }] }),
+		).not.toThrow()
+	})
+	it('gas-switch holds count toward MAX_DECO_MINUTES', () => {
+		const p = planDive({
+			levels: [{ depthM: 60, minutes: 40, breathing: oc(0.18, 0.45) }],
+			decoGases: [gas(0.5), gas(1)],
+			gfLow: 0.4,
+			gfHigh: 0.85,
+			switchMinutes: MAX_DECO_MINUTES,
+		})
+		expect(p.warnings.map((w) => w.code)).toContain('deco-too-long')
+		expect(p.stops.at(-1)).toMatchObject({
+			depthM: 21,
+			minutes: MAX_DECO_MINUTES,
+		})
+	})
+	it('timeToSurface and bailoutPlan share the limits', () => {
+		const t = planDive(ok).endTissues
+		expect(() =>
+			timeToSurface(t, MAX_DEPTH_M + 1, AIR_OC, { gfLow: 0.4, gfHigh: 0.85 }),
+		).toThrow(/depthM/)
+		expect(() =>
+			bailoutPlan(
+				{ ...ok, ascentRate: 0.01 },
+				{ bailoutGases: [AIR], rmvLpm: 20 },
+			),
+		).toThrow(/ascentRate/)
+	})
 	it.each([
 		['n2', 3, NaN],
 		['n2', 0, -0.1],

@@ -208,33 +208,50 @@ export function cnsTotals(
 	opts?: { limits?: CnsLimits; daily?: boolean },
 ): CnsTotals {
 	const limits = assertLimits(opts?.limits)
+	return cnsRunningTotals(exposures, opts).at(-1) ?? emptyTotals(limits)
+}
+
+function emptyTotals(limits: CnsLimits): CnsTotals {
+	return limits === 'noaa-1991'
+		? { limits, cnsPercent: 0 }
+		: { limits, cnsPercent: 0, working: 0, resting: 0 }
+}
+
+/**
+ * {@link cnsTotals} after each exposure, in one pass: element `i` equals
+ * `cnsTotals(exposures.slice(0, i + 1), opts)` exactly.
+ * @example cnsRunningTotals([{ ppo2: 1.4, minutes: 30 }, { ppo2: 1.4, minutes: 30 }]).map((t) => t.cnsPercent) // [20, 40]
+ */
+export function cnsRunningTotals(
+	exposures: readonly Exposure[],
+	opts?: { limits?: CnsLimits; daily?: boolean },
+): CnsTotals[] {
+	const limits = assertLimits(opts?.limits)
 	const daily = opts?.daily ?? false
 	let noaa = 0
 	let shared = 0
 	let working = 0
 	let resting = 0
-	for (const e of exposures) {
+	return exposures.map((e) => {
 		const cns = segmentCns({ ppo2: e.ppo2, minutes: e.minutes, daily })
 		noaa += cns
-		if (limits === 'noaa-1991') continue
+		if (limits === 'noaa-1991') return { limits, cnsPercent: noaa }
 		const phase = assertPhase(e.phase ?? 'working')
-		if (e.ppo2 > HOYT_PPO2 + PPO2_EPS) {
-			shared += cns
-			continue
+		if (e.ppo2 > HOYT_PPO2 + PPO2_EPS) shared += cns
+		else {
+			const own = segmentCns({ ...e, limits, phase, daily })
+			if (phase === 'working') working += own
+			else resting += own
 		}
-		const own = segmentCns({ ...e, limits, phase, daily })
-		if (phase === 'working') working += own
-		else resting += own
-	}
-	if (limits === 'noaa-1991') return { limits, cnsPercent: noaa }
-	working += shared
-	resting += shared
-	return {
-		limits,
-		cnsPercent: Math.min(noaa, Math.max(working, resting)),
-		working,
-		resting,
-	}
+		const w = working + shared
+		const r = resting + shared
+		return {
+			limits,
+			cnsPercent: Math.min(noaa, Math.max(w, r)),
+			working: w,
+			resting: r,
+		}
+	})
 }
 
 /** One entry of a diving day: a dive segment or a surface interval. */
