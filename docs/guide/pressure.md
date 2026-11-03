@@ -33,8 +33,8 @@ Fill math is different. A cylinder gauge reads pressure above the atmosphere, an
 
 ## Sources
 
-- Salt: 10 m per bar, 33 fsw per atm (dive-table convention).
-- Fresh: 10.3 m per bar, from 34 ffw vs 33 fsw per atm, so 10 × 34/33.
+- Salt: 10 m per bar (msw convention: 1 msw = 0.1 bar). This is not the same as the 33 fsw per atm convention, which works out to 9.93 m per bar.
+- Fresh: 10.3 m per bar, the salt value scaled by the 34 ffw / 33 fsw per atm ratio (10 × 34/33).
 - `ATM_BAR`: ISO 2533 / ICAO standard atmosphere (101 325 Pa).
 
 ## Examples

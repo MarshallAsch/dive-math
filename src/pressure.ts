@@ -13,8 +13,9 @@ import type { Water } from './types'
 export type { Water } from './types'
 
 /**
- * Metres of water per bar. Salt: 10 m (33 fsw per atm, dive-table
- * convention). Fresh: 10.3 m (34 ffw vs 33 fsw per atm → 10 × 34/33).
+ * Metres of water per bar. Salt: 10 m (msw convention: 1 msw = 0.1 bar;
+ * not the same as 33 fsw per atm, which is 9.93 m/bar). Fresh: 10.3 m
+ * (scaled by the 34 ffw / 33 fsw per atm ratio → 10 × 34/33).
  */
 export const METERS_PER_BAR: Readonly<Record<Water, number>> = Object.freeze({
 	salt: 10,
