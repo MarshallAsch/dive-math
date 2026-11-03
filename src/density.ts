@@ -16,7 +16,7 @@ export const HE_DENSITY = 0.17846
 /** Recommended maximum, g/L. Source: Anthony & Mitchell, Rebreathers and Scientific Diving (2016). */
 export const RECOMMENDED_MAX_DENSITY = 5.2
 /** Hard maximum, g/L. Source: Anthony & Mitchell (2016). */
-export const HARD_MAX_DENSITY = 6.3
+export const HARD_MAX_DENSITY = 6.2
 
 /** Density at the surface, g/L. @example surfaceDensity(AIR) // 1.288 */
 export function surfaceDensity(g: Gas): number {

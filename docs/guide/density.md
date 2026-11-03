@@ -16,7 +16,7 @@ $$\rho = P\sum_i F_i\,\rho_i$$
 Limits used by the library:
 
 - Recommended maximum: 5.2 g/L.
-- Hard maximum: 6.3 g/L.
+- Hard maximum: 6.2 g/L.
 
 `depthForDensity` inverts the formula for a density target.
 
@@ -29,7 +29,7 @@ Limits used by the library:
 ## Sources
 
 - Component densities: CRC Handbook of Chemistry and Physics.
-- 5.2 and 6.3 g/L limits: Anthony & Mitchell, Rebreathers and Scientific Diving (2016).
+- 5.2 and 6.2 g/L limits: Anthony & Mitchell, Rebreathers and Scientific Diving (2016).
 
 ## Examples
 

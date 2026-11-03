@@ -22,7 +22,7 @@ describe('density', () => {
 	// Anthony & Mitchell (2016) gas density limits.
 	it('limits', () => {
 		expect(RECOMMENDED_MAX_DENSITY).toBe(5.2)
-		expect(HARD_MAX_DENSITY).toBe(6.3)
+		expect(HARD_MAX_DENSITY).toBe(6.2)
 	})
 	it('rejects non-positive density', () =>
 		expect(() => depthForDensity(AIR, 0)).toThrow(RangeError))

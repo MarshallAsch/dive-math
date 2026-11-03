@@ -119,7 +119,7 @@ Plans never throw for unsafe-but-valid dives; they return `warnings`:
 
 - `hypoxic`: ppO₂ below 0.16;
 - `ppo2-high`: above `maxBottomPpo2` on descents and levels, or `maxDecoPpo2` on the ascent;
-- `density-recommended` / `density-hard`: above 5.2 / 6.3 g/L;
+- `density-recommended` / `density-hard`: above 5.2 / 6.2 g/L;
 - `ceiling-violated`: a multi-level ascent above the GF-high ceiling;
 - `no-breathable-gas`: no gas within the ppO₂ limits at a stop depth;
 - `cns-single`: NOAA single-exposure CNS over 100 %; `cns-working` / `cns-resting` under Hoyt 2025;
