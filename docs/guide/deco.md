@@ -97,21 +97,21 @@ airBreaks: {
 }
 ```
 
-A mode with no key takes no breaks; `{ oc: {} }` turns on open-circuit breaks with the defaults. OC 20/5 is the common technical-diving O₂ break. CCR 60/5 follows the US Navy MK 16 practice described by Hoyt et al. (2025), who recommend periodic five-minute breaks during decompression but prescribe no regimen.
+A mode with no key takes no breaks; `{ oc: {} }` turns on open-circuit breaks with the defaults, and a field left `undefined` keeps its default. `onMinutes` and `breakMinutes` must be at least one second (1/60 min). OC 20/5 is the common technical-diving O₂ break. CCR 60/5 follows the US Navy MK 16 practice described by Hoyt et al. (2025), who recommend periodic five-minute breaks during decompression at "an inspired PO₂ equivalent to breathing air at the same depth" but prescribe no regimen. The 1.4 OC trigger, 1.3 CCR trigger and 0.7 break setpoint are conventions chosen for this library.
 
 - **The clock** runs only during the deco ascent, while the OC inspired ppO₂ (or the CCR setpoint in force) is at or above the trigger. It carries across stops and gas switches. Below the trigger it pauses; a continuous stretch below the trigger of at least `breakMinutes` counts as a break and resets it.
 - **A break starts** when the clock is full and the stop isn't clear yet.
 - **Break gas.** OC: the leanest carried gas (the gas the ascent started on, plus the deco gases) that is breathable at the depth and below the trigger. CCR: the loop at `breakSetpoint`, bounded by the diluent.
-- **A stop may end mid-break.** The rest of the break is flown through the ascent (those segments are marked `airBreak`) and into the next stop. A break that runs out in transit ends on arrival. The break gas is re-selected at each depth; if none qualifies, the break ends early without resetting the clock.
+- **A stop may end mid-break.** The rest of the break is flown through the ascent (those segments are marked `airBreak`) and into the next stop. A break that runs out in transit finishes on arrival: the whole travel segment is flown on the break gas, and the leftover transit minutes don't count toward the clock. The clock state for a travel segment (on, paused or mid-break) is judged at its departure depth. The break gas is re-selected at each depth; if none qualifies, the break ends early without resetting the clock.
 - If a break is due but no break gas exists, the plan stays on the normal gas and warns `no-break-gas`.
 
 Break pieces are separate `stop` segments with `airBreak: true`. Each `DecoStop` reports its `breakMinutes`. With breaks, clearing is not monotonic in the wait: padding a stop can start a break, and the travel is then flown on the leaner break gas, which can on-gas fast compartments. The stop-time search therefore checks the wait it finds, and a stop rounded up to a whole minute of runtime is re-checked and extended by whole minutes until the next stop is clear. The stop found may be slightly longer than the shortest possible one, never shorter.
 
 ## Oxygen exposure
 
-`oxygenLimits` picks the CNS limit set: `'noaa-1991'` (default) or `'hoyt-2025'` (see [oxygen exposure](./oxygen.md)). Descent and level segments are `working`; ascent and stop segments are `resting`. A level's `phase` overrides this for the level and the travel into it.
+`oxygenLimits` picks the CNS limit set: `'noaa-1991'` (default) or `'hoyt-2025'` (see [oxygen exposure](./oxygen.md)). Bottom-profile segments (descents, levels, and ascents between levels) are `working` unless the level says otherwise: a level's `phase` applies to the level and the travel into it. The deco ascent (the ascent and stop segments after the last level, including a safety stop) is `resting`.
 
-`DivePlan.oxygen` holds the totals (`working` and `resting` under Hoyt). Every segment carries the cumulative `cnsPercent` and `otu` at its end. `dayExposure` takes the day's earlier dives and surface intervals (the `dailyExposure` items) for the daily checks.
+`DivePlan.oxygen` holds the totals (`working` and `resting` under Hoyt). Every segment carries the cumulative `cnsPercent` and `otu` at its end. `dayExposure` takes the day's earlier dives and surface intervals (the `dailyExposure` items) for the daily checks. Those checks have no decay: surface intervals don't reduce them.
 
 ## Warnings
 

@@ -47,6 +47,57 @@ describe('resolveAirBreaks', () => {
 			/breakSetpoint/,
 		)
 	})
+	it('rejects minutes below one second', () => {
+		expect(() => resolveAirBreaks({ oc: { onMinutes: 1e-9 } })).toThrow(
+			/airBreaks\.oc\.onMinutes/,
+		)
+		expect(() => resolveAirBreaks({ oc: { breakMinutes: 0.01 } })).toThrow(
+			/airBreaks\.oc\.breakMinutes/,
+		)
+		expect(() => resolveAirBreaks({ ccr: { onMinutes: 0.01 } })).toThrow(
+			/airBreaks\.ccr\.onMinutes/,
+		)
+		expect(() => resolveAirBreaks({ ccr: { breakMinutes: 1e-6 } })).toThrow(
+			/airBreaks\.ccr\.breakMinutes/,
+		)
+		expect(
+			resolveAirBreaks({ oc: { onMinutes: 1 / 60, breakMinutes: 1 / 60 } })?.oc
+				?.onMinutes,
+		).toBe(1 / 60)
+	})
+	it('explicit undefined fields take the defaults', () =>
+		expect(
+			resolveAirBreaks({
+				oc: { onMinutes: undefined, triggerPpo2: 1.3 },
+				ccr: { breakSetpoint: undefined },
+			}),
+		).toEqual({
+			oc: { onMinutes: 20, breakMinutes: 5, triggerPpo2: 1.3 },
+			ccr: {
+				onMinutes: 60,
+				breakMinutes: 5,
+				triggerSetpoint: 1.3,
+				breakSetpoint: 0.7,
+			},
+		}))
+	it('drops unknown keys', () => {
+		const r = resolveAirBreaks({
+			oc: { onMinutes: 10, extra: 1 } as never,
+			ccr: { bogus: true } as never,
+		})
+		expect(Object.keys(r!.oc!).sort()).toEqual([
+			'breakMinutes',
+			'onMinutes',
+			'triggerPpo2',
+		])
+		expect(Object.keys(r!.ccr!).sort()).toEqual([
+			'breakMinutes',
+			'breakSetpoint',
+			'onMinutes',
+			'triggerSetpoint',
+		])
+		expect(Object.isFrozen(r!.oc)).toBe(true)
+	})
 })
 
 describe('breakBreathingAt', () => {

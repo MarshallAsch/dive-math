@@ -49,20 +49,63 @@ export interface ResolvedAirBreaks {
 	}
 }
 
-// OC 20/5: the common technical-diving O₂ break. CCR 60/5: US Navy MK 16
-// practice cited in Hoyt et al., Diving Hyperb Med 2025;55(3):262–270.
-const OC_DEFAULTS = { onMinutes: 20, breakMinutes: 5, triggerPpo2: 1.4 }
+// Hoyt et al. (Diving Hyperb Med 2025;55(3):262–270) only describe a break
+// as five minutes at "an inspired PO2 equivalent to breathing air at the same
+// depth"; they prescribe no trigger or setpoint. The triggers and the break
+// setpoint below are conventions chosen for this library.
+const OC_DEFAULTS = {
+	// 20 min on / 5 min off: the common technical-diving O₂-break convention.
+	onMinutes: 20,
+	breakMinutes: 5,
+	// Library convention: the clock runs at the usual 1.4 ata working limit
+	// and above (it covers deco on O₂ at 6 m and EAN50 at 21 m).
+	triggerPpo2: 1.4,
+}
 const CCR_DEFAULTS = {
+	// 60 min on / 5 min off: the US Navy MK 16 practice cited by Hoyt 2025
+	// (a 5 min air break permitted every hour).
 	onMinutes: 60,
 	breakMinutes: 5,
+	// Library convention: 1.3, the setpoint Hoyt 2025 revises the limits for.
 	triggerSetpoint: 1.3,
+	// Library convention: 0.7, a common low setpoint, close to breathing air
+	// at typical deco depths.
 	breakSetpoint: 0.7,
 }
+/**
+ * Shortest `onMinutes` / `breakMinutes` accepted: one second, in minutes.
+ * A library guard (no source): smaller values make the clock loop for no
+ * practical effect.
+ */
+export const MIN_BREAK_CLOCK_MINUTES = 1 / 60
 // Float tolerance on minutes and ppO₂ comparisons.
 const EPS = 1e-9
 
+// Defaults overlaid with the given fields; `undefined` fields keep the
+// default and keys not in the defaults are dropped.
+function withDefaults<T extends Record<string, number>>(
+	defaults: T,
+	input: Partial<Record<keyof T, number | undefined>>,
+): T {
+	const out = { ...defaults }
+	for (const key of Object.keys(defaults) as (keyof T)[]) {
+		const v = input[key]
+		if (v !== undefined) out[key] = v as T[keyof T]
+	}
+	return out
+}
+
+function assertClockMinutes(name: string, value: number): void {
+	assertPositive(name, value)
+	if (value < MIN_BREAK_CLOCK_MINUTES - EPS)
+		throw new RangeError(
+			`${name} must be at least ${MIN_BREAK_CLOCK_MINUTES} min (one second; got ${value})`,
+		)
+}
+
 /**
- * Apply defaults and validate; throws RangeError.
+ * Apply defaults and validate; throws RangeError. Minutes must be at least
+ * {@link MIN_BREAK_CLOCK_MINUTES}.
  * @example resolveAirBreaks({ oc: {} })?.oc?.onMinutes // 20
  */
 export function resolveAirBreaks(
@@ -74,16 +117,16 @@ export function resolveAirBreaks(
 		ccr?: ResolvedAirBreaks['ccr']
 	} = {}
 	if (input.oc) {
-		const oc = { ...OC_DEFAULTS, ...input.oc }
-		assertPositive('airBreaks.oc.onMinutes', oc.onMinutes)
-		assertPositive('airBreaks.oc.breakMinutes', oc.breakMinutes)
+		const oc = withDefaults(OC_DEFAULTS, input.oc)
+		assertClockMinutes('airBreaks.oc.onMinutes', oc.onMinutes)
+		assertClockMinutes('airBreaks.oc.breakMinutes', oc.breakMinutes)
 		assertPositive('airBreaks.oc.triggerPpo2', oc.triggerPpo2)
 		out.oc = Object.freeze(oc)
 	}
 	if (input.ccr) {
-		const ccr = { ...CCR_DEFAULTS, ...input.ccr }
-		assertPositive('airBreaks.ccr.onMinutes', ccr.onMinutes)
-		assertPositive('airBreaks.ccr.breakMinutes', ccr.breakMinutes)
+		const ccr = withDefaults(CCR_DEFAULTS, input.ccr)
+		assertClockMinutes('airBreaks.ccr.onMinutes', ccr.onMinutes)
+		assertClockMinutes('airBreaks.ccr.breakMinutes', ccr.breakMinutes)
 		assertPositive('airBreaks.ccr.triggerSetpoint', ccr.triggerSetpoint)
 		assertPositive('airBreaks.ccr.breakSetpoint', ccr.breakSetpoint)
 		if (ccr.breakSetpoint >= ccr.triggerSetpoint)
