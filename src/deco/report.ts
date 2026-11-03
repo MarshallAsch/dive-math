@@ -12,7 +12,6 @@ import {
 	cnsTotals,
 	dailyExposure,
 	repexAllowance,
-	segmentCns,
 	segmentOtu,
 	type CnsLimits,
 	type CnsTotals,
@@ -119,26 +118,21 @@ export function segmentExposures(
 }
 
 /**
- * Segments with cumulative CNS % and OTU at each segment's end.
+ * Segments with cumulative CNS % and OTU at each segment's end. CNS is
+ * {@link cnsTotals} over the exposures up to and including the segment.
  * @example withOxygen(drafts).at(-1)?.cnsPercent
  */
 export function withOxygen(
 	segments: readonly SegmentDraft[],
 	opts?: OxygenOptions,
 ): PlannedSegment[] {
-	const limits = opts?.limits ?? 'noaa-1991'
+	const limits = opts?.limits
 	const exposures = segmentExposures(segments, opts)
-	let working = 0
-	let resting = 0
 	let otu = 0
 	return segments.map((s, i) => {
-		const e = exposures[i] as Exposure
-		const cns = segmentCns({ ...e, limits })
-		if (s.phase === 'working') working += cns
-		else resting += cns
-		otu += segmentOtu(e)
-		const cnsPercent =
-			limits === 'noaa-1991' ? working + resting : Math.max(working, resting)
+		otu += segmentOtu(exposures[i] as Exposure)
+		// O(n²) over ~100 segments; reusing cnsTotals keeps the rule in one place.
+		const { cnsPercent } = cnsTotals(exposures.slice(0, i + 1), { limits })
 		return { ...s, cnsPercent, otu }
 	})
 }
@@ -170,7 +164,8 @@ export function oxygenWarnings(
 	const totals = oxygenTotals(segments, opts)
 	if (limits === 'noaa-1991') {
 		if (over(totals.cnsPercent)) out.push({ code: 'cns-single' })
-	} else {
+	} else if (over(totals.cnsPercent)) {
+		// Hoyt: within limits if either guideline is met; name the phase(s) over.
 		if (over(totals.working)) out.push({ code: 'cns-working' })
 		if (over(totals.resting)) out.push({ code: 'cns-resting' })
 	}

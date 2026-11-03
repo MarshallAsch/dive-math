@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { gas } from '../gas'
+import { cnsTotals, segmentOtu } from '../oxygen'
 import { ataAtDepth } from '../pressure'
 import { bailoutPlan } from './bailout'
 import { gfAt, toleratedAmbient } from './limits'
 import { breathingPpo2, type Breathing } from './breathing'
 import { planDive, timeToSurface, type PlanInput } from './plan'
 import { replaySegments } from './profile'
+import { segmentExposures } from './report'
 
 const tmx: Breathing = { kind: 'oc', gas: gas(0.18, 0.45) }
 // 60 m / 40 min on 18/45 with EAN50 and O₂, GF 40/85: 15.7 min on O₂ at 6 m
@@ -60,6 +62,63 @@ describe('oxygen limits in plans', () => {
 		expect(codes(p)).toContain('cns-working')
 		expect(codes(p)).not.toContain('cns-resting')
 	})
+	it('Hoyt: 241 min working at 1.3 raises cns-working', () => {
+		const p = planDive({
+			levels: [
+				{
+					depthM: 10,
+					minutes: 241,
+					breathing: { ...loop, diluent: gas(0.21) },
+				},
+			],
+			gfLow: 0.4,
+			gfHigh: 0.85,
+			oxygenLimits: 'hoyt-2025',
+		})
+		expect(p.oxygen.working).toBeGreaterThan(100)
+		expect(codes(p)).toContain('cns-working')
+	})
+	it('Hoyt: no warning when the NOAA guideline is met (280 min at 1.0)', () => {
+		const p = planDive({
+			levels: [
+				{
+					depthM: 10,
+					minutes: 280,
+					breathing: { ...loop, diluent: gas(0.21), setpoint: 1 },
+				},
+			],
+			gfLow: 0.4,
+			gfHigh: 0.85,
+			oxygenLimits: 'hoyt-2025',
+		})
+		expect(p.oxygen.working).toBeGreaterThan(100)
+		expect(p.oxygen.cnsPercent).toBeLessThan(100)
+		expect(p.segments.at(-1)!.cnsPercent).toBeCloseTo(p.oxygen.cnsPercent, 9)
+		expect(codes(p)).not.toContain('cns-working')
+	})
+	it('Hoyt: a long resting phase raises cns-resting', () => {
+		const p = planDive({
+			...ccr,
+			oxygenLimits: 'hoyt-2025',
+			levels: [
+				...ccr.levels,
+				{ depthM: 6, minutes: 250, breathing: loop, phase: 'resting' },
+			],
+		})
+		expect(codes(p)).toContain('cns-resting')
+		expect(codes(p)).not.toContain('cns-working')
+	})
+	it('segment cnsPercent is cnsTotals over the exposures so far', () => {
+		const p = planDive({ ...oc, oxygenLimits: 'hoyt-2025' })
+		const exposures = segmentExposures(p.segments)
+		p.segments.forEach((s, i) =>
+			expect(s.cnsPercent).toBeCloseTo(
+				cnsTotals(exposures.slice(0, i + 1), { limits: 'hoyt-2025' })
+					.cnsPercent,
+				12,
+			),
+		)
+	})
 	it('a level can be marked resting', () => {
 		const p = planDive({
 			...ccr,
@@ -69,9 +128,28 @@ describe('oxygen limits in plans', () => {
 				{ depthM: 6, minutes: 30, breathing: loop, phase: 'resting' },
 			],
 		})
-		const level = p.segments.find((s) => s.kind === 'level' && s.toDepthM === 6)
-		expect(level?.phase).toBe('resting')
+		const i = p.segments.findIndex(
+			(s) => s.kind === 'level' && s.toDepthM === 6,
+		)
+		expect(p.segments[i]!.phase).toBe('resting')
+		// The travel into the level takes the level's phase.
+		expect(p.segments[i - 1]).toMatchObject({
+			kind: 'ascent',
+			toDepthM: 6,
+			phase: 'resting',
+		})
 		expect(p.segments[0]!.phase).toBe('working')
+	})
+	it('the deco ascent is resting; the bottom profile is working', () => {
+		const p = planDive({
+			...oc,
+			levels: [...oc.levels, { depthM: 30, minutes: 5, breathing: tmx }],
+		})
+		const last = p.segments.map((s) => s.kind).lastIndexOf('level')
+		p.segments.forEach((s, i) =>
+			expect(s.phase).toBe(i <= last ? 'working' : 'resting'),
+		)
+		expect(p.segments[last - 1]).toMatchObject({ kind: 'ascent', toDepthM: 30 })
 	})
 	it('dayExposure adds earlier dives to the daily checks', () => {
 		const alone = planDive(oc)
@@ -84,6 +162,19 @@ describe('oxygen limits in plans', () => {
 			],
 		})
 		expect(codes(p)).toContain('cns-daily')
+	})
+	it('otu-daily on either side of 850 OTU', () => {
+		const planOtu = planDive(oc).oxygen.otu
+		const perMin = segmentOtu({ ppo2: 1.5, minutes: 1 })
+		const day = (otu: number) => [
+			{ type: 'dive' as const, ppo2: 1.5, minutes: otu / perMin },
+		]
+		expect(
+			codes(planDive({ ...oc, dayExposure: day(850 - planOtu - 0.01) })),
+		).not.toContain('otu-daily')
+		expect(
+			codes(planDive({ ...oc, dayExposure: day(850 - planOtu + 0.01) })),
+		).toContain('otu-daily')
 	})
 	it('otu-daily past 850 OTU for the day', () => {
 		const p = planDive({

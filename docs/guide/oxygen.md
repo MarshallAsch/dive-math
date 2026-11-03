@@ -2,7 +2,7 @@
 
 ## What it's for
 
-Tracks oxygen toxicity. The CNS clock uses the NOAA 1991 limits by default, or the Hoyt 2025 revision for ppO₂ ≤ 1.3. OTU tracks pulmonary exposure, with REPEX for multi-day missions. `dailyExposure` runs a whole day of dives and surface intervals.
+Tracks oxygen toxicity. The CNS clock uses the NOAA 1991 limits by default, or the Hoyt 2025 revised guideline at 1.3 ata. OTU tracks pulmonary exposure, with REPEX for multi-day missions. `dailyExposure` runs a whole day of dives and surface intervals.
 
 ## The NOAA table
 
@@ -30,12 +30,15 @@ NOAA publishes no limit above 1.6 ata. `cnsLimitMinutes` clamps to the 1.6 row t
 
 ## Hoyt 2025 limits
 
-Hoyt et al. (2025), endorsed at a NOAA workshop, revise the limit at an inspired ppO₂ of 1.3 only: up to **240 min of working dive followed by up to 240 min of resting decompression** per dive, and the same combined total per 24 hours (from the start of the first dive). With `limits: 'hoyt-2025'`:
+Hoyt et al. (2025), endorsed at a NOAA workshop, revise the guideline for an inspired ppO₂ of 1.3 only: up to **240 min of working dive followed by up to 240 min of resting decompression** per dive, and the same combined total per 24 hours (from the start of the first dive). They propose no change to the limits above 1.3 and no calculated increase below 1.3, but note that the 1.3 guideline can be applied below 1.3 with less risk. With `limits: 'hoyt-2025'`:
 
-- Every exposure has a `phase`, `'working'` or `'resting'`, and each phase has its own clock.
-- At ppO₂ ≤ 1.3 the limit is 240 min per phase, or the NOAA limit where that is longer (≤ 1.0 ata). The paper proposes no increase below 1.3 but notes the 1.3 limit can be applied there with less risk.
-- Above 1.3 the NOAA limits apply unchanged, charged to the exposure's phase. Note the step at 1.3: 240 min at 1.3, 180 min just above it.
-- `cnsPercent` is the larger of the two phases; 100 % in either is the limit.
+- Every exposure has a `phase`, `'working'` or `'resting'` (default `'working'`).
+- From 0.6 to 1.3 ata, an exposure is charged to its own phase's 240 min budget. `cnsLimitMinutes` returns 240 there.
+- Above 1.3 ata, nothing changes: those exposures run one shared NOAA clock, whatever their phase, and that percent counts toward both `working` and `resting`. Below 0.6 ata no CNS accrues, as under NOAA.
+- A dive is within limits if it meets **either** guideline. `cnsPercent` is the NOAA percent or the larger phase, whichever is lower, so the Hoyt set never allows less than NOAA. A `cns-working` or `cns-resting` warning needs both to be over 100 %.
+- `daily: true` uses the NOAA 24-hour column for every NOAA lookup and keeps 240 min per phase per 24 h.
+
+So 240 min working plus 240 min resting at 1.3 is 100 %; 150 + 150 min at 1.4 is 200 %, the same as NOAA; 300 + 300 min at 1.0 is 125 %; and 280 min working at 1.0 alone is the NOAA 93.3 %.
 
 Caveats from the paper: the data come mostly from precisely controlled ppO₂, so minimise upward drift around a setpoint. "Resting" means no more activity than needed to hold position (formally an RMV below 22.5 L/min). Beyond 8 hours is poorly informed by data. Following the limits does not guarantee that CNS toxicity won't occur.
 
@@ -54,7 +57,7 @@ Surface decay, with a 90 minute half-time:
 $$CNS(t) = CNS_0 \cdot 0.5^{\,t/90}$$
 
 - $t$: time at the segment's $pO_2$, minutes.
-- $t_{lim}$: the NOAA limit for that $pO_2$, minutes (interpolated).
+- $t_{lim}$: the limit for that $pO_2$ under the selected set, minutes (NOAA: interpolated).
 - $pO_2$: oxygen partial pressure, ata. No OTU accrue at or below 0.5 ata.
 - $CNS_0$: CNS percent at the start of a surface interval.
 
@@ -83,6 +86,9 @@ dailyExposure([{ type: 'dive', ppo2: 1.4, minutes: 30 }, { type: 'surface', minu
 cnsLimitMinutes(1.3, { daily: true }) // => 210
 cnsLimitMinutes(1.3, { limits: 'hoyt-2025', phase: 'resting' }) // => 240
 cnsTotals([{ ppo2: 1.3, minutes: 240, phase: 'working' }, { ppo2: 1.3, minutes: 120, phase: 'resting' }], { limits: 'hoyt-2025' }).cnsPercent // => 100
+cnsTotals([{ ppo2: 1.4, minutes: 150, phase: 'working' }, { ppo2: 1.4, minutes: 150, phase: 'resting' }], { limits: 'hoyt-2025' }).cnsPercent // => 200
+cnsTotals([{ ppo2: 1.0, minutes: 300, phase: 'working' }, { ppo2: 1.0, minutes: 300, phase: 'resting' }], { limits: 'hoyt-2025' }).cnsPercent // => 125
+cnsTotals([{ ppo2: 1.0, minutes: 280, phase: 'working' }], { limits: 'hoyt-2025' }).cnsPercent // => 93.33
 repex([800, 700]).exceeded // => true
 ```
 

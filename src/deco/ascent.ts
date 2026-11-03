@@ -40,7 +40,7 @@ export interface SegmentDraft {
 
 /** One planned piece of the dive, with cumulative oxygen exposure at its end. */
 export interface PlannedSegment extends SegmentDraft {
-	/** Cumulative CNS % (Hoyt: the larger phase). */
+	/** Cumulative CNS %: `cnsTotals` over the segments so far. */
 	readonly cnsPercent: number
 	/** Cumulative OTU. */
 	readonly otu: number

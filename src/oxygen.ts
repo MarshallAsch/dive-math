@@ -1,6 +1,6 @@
 /**
  * Oxygen toxicity: CNS clock and pulmonary OTU. CNS limits come from the
- * NOAA 1991 table (default) or the Hoyt 2025 revision at ppO₂ ≤ 1.3.
+ * NOAA 1991 table (default) or the Hoyt 2025 revised guideline at 1.3 ata.
  * Above 1.6 ata NOAA publishes no limit; `cnsLimitMinutes` clamps to the
  * 1.6 row, which understates exposure — do not plan above 1.6.
  * @module
@@ -56,6 +56,9 @@ export const CNS_HALF_LIFE_MIN = 90
 export const HOYT_PPO2 = 1.3
 /** Hoyt 2025 budget per phase (working, resting), minutes, per dive and per 24 h. */
 export const HOYT_PHASE_MINUTES = 240
+// Float tolerance so a 1.3 computed from a depth still counts as 1.3 (well
+// below any meaningful ata).
+const PPO2_EPS = 1e-9
 
 // Source: Hamilton RW, MTS Journal 23(4), 1989, Fig. 1 (REPEX; Hamilton,
 // Kenyon, Peterson, Butler, Beers 1988).
@@ -81,7 +84,7 @@ export const REPEX_DAILY_AFTER_14 = 300
 /** Longest mission REPEX covers, days. */
 export const REPEX_MAX_DAYS = 30
 
-/** CNS limit set: NOAA 1991 (default) or the Hoyt 2025 revision at ppO₂ ≤ 1.3. */
+/** CNS limit set: NOAA 1991 (default) or the Hoyt 2025 revised 1.3 ata guideline. */
 export type CnsLimits = 'noaa-1991' | 'hoyt-2025'
 /** Dive phase for the Hoyt 2025 budgets: working (bottom) or resting (deco). */
 export type O2Phase = 'working' | 'resting'
@@ -90,6 +93,7 @@ export type O2Phase = 'working' | 'resting'
 export interface CnsLimitOptions {
 	/** ['noaa-1991'] */
 	limits?: CnsLimits
+	/** Dive phase the exposure belongs to; required for `hoyt-2025`, ignored by NOAA. */
 	phase?: O2Phase
 	/** Use the 24-hour day limits. [false] */
 	daily?: boolean
@@ -110,22 +114,35 @@ function interpolate(table: readonly Row[], ppo2: number): number {
 	return last[1]
 }
 
+function assertLimits(limits: CnsLimits | undefined): CnsLimits {
+	const l = limits ?? 'noaa-1991'
+	if (l !== 'noaa-1991' && l !== 'hoyt-2025')
+		throw new RangeError(`limits must be 'noaa-1991' or 'hoyt-2025'`)
+	return l
+}
+
+function assertPhase(phase: O2Phase | undefined): O2Phase {
+	if (phase !== 'working' && phase !== 'resting')
+		throw new RangeError(`phase must be 'working' or 'resting' for hoyt-2025`)
+	return phase
+}
+
 /**
- * CNS limit, minutes. Hoyt 2025: at ppO₂ ≤ 1.3 the NOAA limit or 240 min,
- * whichever is longer, per phase; NOAA above 1.3.
+ * CNS limit, minutes. Hoyt 2025: from 0.6 to 1.3 ata, 240 min per phase (the
+ * 1.3 guideline applied below 1.3); above 1.3 the NOAA limit, unchanged.
+ * Below 0.6 ata there is no limit (`Infinity`) under either set.
+ * A Hoyt limit alone does not decide a dive: see {@link cnsTotals}.
  * @example cnsLimitMinutes(1.4) // 150
  * @example cnsLimitMinutes(1.3, { limits: 'hoyt-2025', phase: 'working' }) // 240
  */
 export function cnsLimitMinutes(ppo2: number, opts?: CnsLimitOptions): number {
 	assertNonNegative('ppo2', ppo2)
-	const limits = opts?.limits ?? 'noaa-1991'
-	if (limits !== 'noaa-1991' && limits !== 'hoyt-2025')
-		throw new RangeError(`limits must be 'noaa-1991' or 'hoyt-2025'`)
+	const limits = assertLimits(opts?.limits)
 	const noaa = interpolate(opts?.daily ? CNS_DAILY_TABLE : CNS_TABLE, ppo2)
 	if (limits === 'noaa-1991') return noaa
-	if (opts?.phase !== 'working' && opts?.phase !== 'resting')
-		throw new RangeError(`phase must be 'working' or 'resting' for hoyt-2025`)
-	return ppo2 <= HOYT_PPO2 + 1e-9 ? Math.max(noaa, HOYT_PHASE_MINUTES) : noaa
+	assertPhase(opts?.phase)
+	if (!Number.isFinite(noaa)) return noaa
+	return ppo2 <= HOYT_PPO2 + PPO2_EPS ? HOYT_PHASE_MINUTES : noaa
 }
 
 /** CNS clock percent for one segment. @example segmentCns({ ppo2: 1.4, minutes: 30 }) // 20 */
@@ -153,14 +170,23 @@ export function segmentOtu(input: { ppo2: number; minutes: number }): number {
 	)
 }
 
-/** CNS percent under a limit set. Hoyt: `cnsPercent` is the larger phase. */
+/**
+ * CNS percent under a limit set.
+ *
+ * Hoyt 2025: exposures above 1.3 ata run one shared NOAA clock, whatever
+ * their phase (the paper proposes no change above 1.3), and that shared
+ * percent is added to both `working` and `resting`. Exposures from 0.6 to
+ * 1.3 ata are charged to their own phase's 240 min budget. A dive is within
+ * limits if it meets either guideline, so `cnsPercent` is the NOAA percent
+ * or max(working, resting), whichever is lower.
+ */
 export interface CnsTotals {
 	readonly limits: CnsLimits
-	/** NOAA: the single clock. Hoyt: max(working, resting). */
+	/** NOAA: the single clock. Hoyt: min(NOAA percent, max(working, resting)). */
 	readonly cnsPercent: number
-	/** Hoyt only: percent of the working budget. */
+	/** Hoyt only: percent of the working budget, plus the shared clock above 1.3 ata. */
 	readonly working?: number
-	/** Hoyt only: percent of the resting budget. */
+	/** Hoyt only: percent of the resting budget, plus the shared clock above 1.3 ata. */
 	readonly resting?: number
 }
 
@@ -172,31 +198,43 @@ export interface Exposure {
 }
 
 /**
- * CNS totals over exposures (no decay).
+ * CNS totals over exposures (no decay). `daily` uses the NOAA 24-hour
+ * column for every NOAA lookup; the Hoyt budgets stay 240 min per phase.
+ * See {@link CnsTotals} for the Hoyt 2025 rule.
  * @example cnsTotals([{ ppo2: 1.3, minutes: 240, phase: 'working' }], { limits: 'hoyt-2025' }).working // 100
  */
 export function cnsTotals(
 	exposures: readonly Exposure[],
 	opts?: { limits?: CnsLimits; daily?: boolean },
 ): CnsTotals {
-	const limits = opts?.limits ?? 'noaa-1991'
+	const limits = assertLimits(opts?.limits)
 	const daily = opts?.daily ?? false
+	let noaa = 0
+	let shared = 0
 	let working = 0
 	let resting = 0
 	for (const e of exposures) {
-		const phase = e.phase ?? 'working'
-		const cns = segmentCns({
-			ppo2: e.ppo2,
-			minutes: e.minutes,
-			limits,
-			phase,
-			daily,
-		})
-		if (phase === 'working') working += cns
-		else resting += cns
+		const cns = segmentCns({ ppo2: e.ppo2, minutes: e.minutes, daily })
+		noaa += cns
+		if (limits === 'noaa-1991') continue
+		const phase = assertPhase(e.phase ?? 'working')
+		if (e.ppo2 > HOYT_PPO2 + PPO2_EPS) {
+			shared += cns
+			continue
+		}
+		const own = segmentCns({ ...e, limits, phase, daily })
+		if (phase === 'working') working += own
+		else resting += own
 	}
-	if (limits === 'noaa-1991') return { limits, cnsPercent: working + resting }
-	return { limits, cnsPercent: Math.max(working, resting), working, resting }
+	if (limits === 'noaa-1991') return { limits, cnsPercent: noaa }
+	working += shared
+	resting += shared
+	return {
+		limits,
+		cnsPercent: Math.min(noaa, Math.max(working, resting)),
+		working,
+		resting,
+	}
 }
 
 /** One entry of a diving day: a dive segment or a surface interval. */
@@ -228,7 +266,7 @@ export function dailyExposure(
 	items: readonly DayItem[],
 	opts?: { limits?: CnsLimits },
 ): DayResult {
-	const limits = opts?.limits ?? 'noaa-1991'
+	const limits = assertLimits(opts?.limits)
 	let running = 0
 	let peak = 0
 	let totalOtu = 0
