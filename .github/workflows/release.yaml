@@ -3,10 +3,7 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: {}
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -14,16 +11,20 @@ jobs:
   release:
     if: github.repository == 'MarshallAsch/dive-math'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # changesets pushes the release branch and tags
+      pull-requests: write # changesets opens the version PR
+      id-token: write # npm provenance
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm test
-      - uses: changesets/action@v1
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           publish: npm run release
           title: 'chore: release'
